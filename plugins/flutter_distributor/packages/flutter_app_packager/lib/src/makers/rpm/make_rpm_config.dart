@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_app_packager/src/api/app_package_maker.dart';
+import 'package:path/path.dart' as path;
 
 class MakeRPMConfig extends MakeConfig {
   MakeRPMConfig({
@@ -36,7 +37,8 @@ class MakeRPMConfig extends MakeConfig {
     this.defattr,
     this.attr,
     this.changelog,
-  });
+    Map<String, String>? extraFiles,
+  }) : extraFiles = extraFiles ?? {};
 
   factory MakeRPMConfig.fromJson(Map<String, dynamic> json) {
     return MakeRPMConfig(
@@ -70,6 +72,8 @@ class MakeRPMConfig extends MakeConfig {
       defattr: json['defattr'] as String?,
       attr: json['attr'] as String?,
       changelog: json['changelog'] as String?,
+      extraFiles: (json['extra_files'] as Map?)
+          ?.map((key, value) => MapEntry('$key', '$value')),
     );
   }
 
@@ -106,6 +110,8 @@ class MakeRPMConfig extends MakeConfig {
   String? attr;
   String? changelog;
 
+  final Map<String, String> extraFiles;
+
   @override
   Map<String, dynamic> toJson() {
     return {
@@ -129,19 +135,25 @@ class MakeRPMConfig extends MakeConfig {
         }..removeWhere((key, value) => value == null),
         'body': {
           '%description': description ?? pubspec.description,
-          '%install':
-              install ??
-              [
-                'mkdir -p %{buildroot}%{_bindir}',
-                'mkdir -p %{buildroot}%{_datadir}/%{name}',
-                'mkdir -p %{buildroot}%{_datadir}/applications',
-                'mkdir -p %{buildroot}%{_datadir}/pixmaps',
-                'cp -r %{name}/* %{buildroot}%{_datadir}/%{name}',
-                'ln -s %{_datadir}/%{name}/%{name} %{buildroot}%{_bindir}/%{name}',
-                'cp -r %{name}.desktop %{buildroot}%{_datadir}/applications',
-                'cp -r %{name}.png %{buildroot}%{_datadir}/pixmaps',
-                'update-mime-database %{_datadir}/mime &> /dev/null || :',
-              ].join('\n'),
+          '%install': [
+            install ??
+                [
+                  'mkdir -p %{buildroot}%{_bindir}',
+                  'mkdir -p %{buildroot}%{_datadir}/%{name}',
+                  'mkdir -p %{buildroot}%{_datadir}/applications',
+                  'mkdir -p %{buildroot}%{_datadir}/pixmaps',
+                  'cp -r %{name}/* %{buildroot}%{_datadir}/%{name}',
+                  'ln -s %{_datadir}/%{name}/%{name} %{buildroot}%{_bindir}/%{name}',
+                  'cp -r %{name}.desktop %{buildroot}%{_datadir}/applications',
+                  'cp -r %{name}.png %{buildroot}%{_datadir}/pixmaps',
+                  'update-mime-database %{_datadir}/mime &> /dev/null || :',
+                ].join('\n'),
+            ...extraFiles.entries.map(
+              (entry) =>
+                  'install -Dm644 ${path.absolute(entry.key)} '
+                  '%{buildroot}/${entry.value}',
+            ),
+          ].join('\n'),
           if (post != null) '%post': post,
           '%postun':
               postun ??
@@ -157,6 +169,7 @@ class MakeRPMConfig extends MakeConfig {
                 '%{_datadir}/%{name}',
                 '%{_datadir}/applications/%{name}.desktop',
                 if (icon != null) '%{_datadir}/pixmaps/%{name}.png',
+                ...extraFiles.values.map((destination) => '/$destination'),
               ].join('\n'),
         }..removeWhere((key, value) => value == null),
       },
