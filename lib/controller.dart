@@ -1612,8 +1612,8 @@ class AppController {
     int successCount = 0;
     try {
       for (final platformFile in validFiles) {
-        final bytes = platformFile.bytes;
-        if (bytes == null || bytes.isEmpty) continue;
+        final bytes = await platformFile.readAsBytes();
+        if (bytes.isEmpty) continue;
 
         try {
           final profile = await Profile.normal(

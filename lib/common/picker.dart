@@ -19,14 +19,21 @@ class Picker {
     if (system.isMacOS) {
       await FilePicker.skipEntitlementsChecks();
     }
-    final filePickerResult = await FilePicker.pickFiles(
-      withData: withData,
-      allowMultiple: allowMultiple,
-      allowedExtensions: useCustom ? allowedExtensions : null,
-      type: useCustom ? FileType.custom : FileType.any,
-      initialDirectory: await appPath.downloadDirPath,
-    );
-    return filePickerResult?.files;
+    if (allowMultiple) {
+      final files = await FilePicker.pickFiles(
+        allowedExtensions: useCustom ? allowedExtensions : null,
+        type: useCustom ? FileType.custom : FileType.any,
+        initialDirectory: await appPath.downloadDirPath,
+      );
+      return files.isEmpty ? null : files;
+    } else {
+      final file = await FilePicker.pickFile(
+        allowedExtensions: useCustom ? allowedExtensions : null,
+        type: useCustom ? FileType.custom : FileType.any,
+        initialDirectory: await appPath.downloadDirPath,
+      );
+      return file != null ? [file] : null;
+    }
   }
 
   Future<PlatformFile?> pickerFile({
@@ -60,15 +67,16 @@ class Picker {
     if (system.isMacOS) {
       await FilePicker.skipEntitlementsChecks();
     }
-    final path = await FilePicker.saveFile(
+    final uri = await FilePicker.saveFile(
       fileName: name,
       initialDirectory: await appPath.downloadDirPath,
-      bytes: system.isAndroid ? bytes : null,
+      bytes: bytes,
       allowedExtensions: useCustom ? allowedExtensions : null,
       type: useCustom ? FileType.custom : FileType.any,
     );
-    if (path == null) return null;
+    if (uri == null) return null;
 
+    final path = uri.scheme == 'file' ? uri.toFilePath() : uri.path;
     var savePath = path;
     if (allowedExtensions != null && allowedExtensions.isNotEmpty) {
       final hasExt = allowedExtensions.any((ext) => savePath.endsWith('.$ext'));
@@ -77,7 +85,7 @@ class Picker {
       }
     }
 
-    if (!system.isAndroid) {
+    if (!system.isAndroid && uri.scheme == 'file') {
       final file = await File(savePath).create(recursive: true);
       await file.writeAsBytes(bytes);
     }

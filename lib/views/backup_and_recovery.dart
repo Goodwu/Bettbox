@@ -144,9 +144,10 @@ class _BackupAndRecoveryState extends ConsumerState<BackupAndRecovery> {
             path,
             recoveryOption,
           );
-        } else if (file?.bytes != null) {
+        } else if (file != null) {
+          final bytes = await file.readAsBytes();
           await globalState.appController.recoveryData(
-            List<int>.from(file!.bytes!),
+            List<int>.from(bytes),
             recoveryOption,
           );
         } else {
