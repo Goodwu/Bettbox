@@ -822,7 +822,12 @@
   "logLevelDebugHint": "{level}模式適合網路偵錯，日常使用建議關閉",
   "collapse": "收起",
   "analyzeLogPrompt": "分析Bettbox(Mihomo)日誌:{log}",
-  "geoBuiltInResources": "GEO 內建資源"
+  "geoBuiltInResources": "GEO 內建資源",
+  "setcapNotInstalledFallback": "未安裝 setcap，已回退到 setuid",
+  "xattrUnsupportedFallback": "檔案系統不支援檔案能力（xattr），已回退到 setuid",
+  "setcapFailedFallback": "無法授予檔案能力，已回退到 setuid",
+  "coreMountNosuid": "核心所在檔案系統以 nosuid 掛載，檔案能力與 setuid 均無法生效",
+  "coreCapabilityNotEffective": "核心授權未生效：執行中的核心缺少 CAP_NET_ADMIN，TUN 可能無法運作"
 }
 
 

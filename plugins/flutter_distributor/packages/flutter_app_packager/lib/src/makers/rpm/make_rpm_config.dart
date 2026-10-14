@@ -33,6 +33,7 @@ class MakeRPMConfig extends MakeConfig {
     this.install,
     this.post,
     this.postun,
+    this.posttrans,
     this.files,
     this.defattr,
     this.attr,
@@ -68,12 +69,14 @@ class MakeRPMConfig extends MakeConfig {
       install: json['install'] as String?,
       post: json['post'] as String?,
       postun: json['postun'] as String?,
+      posttrans: json['posttrans'] as String?,
       files: json['files'] as String?,
       defattr: json['defattr'] as String?,
       attr: json['attr'] as String?,
       changelog: json['changelog'] as String?,
-      extraFiles: (json['extra_files'] as Map?)
-          ?.map((key, value) => MapEntry('$key', '$value')),
+      extraFiles: (json['extra_files'] as Map?)?.map(
+        (key, value) => MapEntry('$key', '$value'),
+      ),
     );
   }
 
@@ -105,6 +108,7 @@ class MakeRPMConfig extends MakeConfig {
   String? install;
   String? post;
   String? postun;
+  String? posttrans;
   String? files;
   String? defattr;
   String? attr;
@@ -160,6 +164,7 @@ class MakeRPMConfig extends MakeConfig {
               [
                 'update-mime-database %{_datadir}/mime &> /dev/null || :',
               ].join('\n'),
+          if (posttrans != null) '%posttrans': posttrans,
           '%files':
               files ??
               [

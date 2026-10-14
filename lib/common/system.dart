@@ -16,13 +16,6 @@ import 'package:flutter/services.dart';
 import 'package:path/path.dart';
 import 'package:synchronized/synchronized.dart';
 
-enum _SetcapResult {
-  granted,
-  notInstalled,
-  xattrUnsupported,
-  failed,
-}
-
 class System {
   static System? _instance;
 
@@ -73,19 +66,18 @@ class System {
     return parts.first.startsWith(ownerPrefix) && parts.last.contains('s');
   }
 
-  Future<bool> _hasCoreCapabilities() async {
-    try {
-      final result = await Process.run('getcap', [appPath.corePath]);
-      return result.exitCode == 0 &&
-          result.stdout.toString().contains('cap_net_admin');
-    } catch (_) {
-      return false;
+  static Future<bool> _hasCoreCapabilities() async {
+    for (final getcap in ['getcap', '/usr/sbin/getcap', '/sbin/getcap']) {
+      try {
+        final result = await Process.run(getcap, [appPath.corePath]);
+        return result.exitCode == 0 &&
+            result.stdout.toString().contains('cap_net_admin');
+      } catch (_) {}
     }
+    return false;
   }
 
-  // Reconciles adjacent state before answering: on non-setuid Linux this
-  // repairs the data dir and re-asserts the polkit rule, and may prompt.
-  Future<bool> reconcilePrivileges() async {
+  Future<bool> checkIsAdmin() async {
     if (system.isWindows) {
       if (kDebugMode) return windows?.isUserAnAdmin ?? false;
       final result = await windows?.checkService();
@@ -100,13 +92,8 @@ class System {
       if (appPath.isAppImage) {
         await appPath.ensureAppImageCoreSynced();
       }
-      // A setuid core needs neither the data-dir repair nor the polkit rule:
-      // its Go-side permission guard reclaims ownership itself, and it calls
-      // resolvectl as root, which polkit authorizes implicitly.
-      if (await _isSetuidRootOwned(appPath.corePath, 'root:')) return true;
-      await _repairForeignOwnedDataDir();
-      await _ensurePolkitRule();
-      return await _hasCoreCapabilities();
+      return await _isSetuidRootOwned(appPath.corePath, 'root:') ||
+          await _hasCoreCapabilities();
     }
 
     return true;
@@ -115,7 +102,9 @@ class System {
   Future<AuthorizeCode> authorizeCore() async {
     if (system.isAndroid) return AuthorizeCode.none;
 
-    if (await reconcilePrivileges()) return AuthorizeCode.none;
+    if (Platform.isLinux) return _authorizeLinuxCore();
+
+    if (await checkIsAdmin()) return AuthorizeCode.none;
 
     if (system.isWindows) {
       if (kDebugMode) return AuthorizeCode.error;
@@ -167,178 +156,218 @@ class System {
       return AuthorizeCode.success;
     }
 
-    if (Platform.isLinux) {
-      if (appPath.isAppImage) {
-        await appPath.ensureAppImageCoreSynced();
-      }
-
-      final setcap = await _trySetcap();
-      if (setcap != _SetcapResult.granted) {
-        _showSetuidFallback(setcap);
-        if (!(await _runPrivileged(await _linuxSetuidScript)).ok) {
-          return AuthorizeCode.error;
-        }
-      }
-
-      return AuthorizeCode.success;
-    }
-
     return AuthorizeCode.error;
   }
 
-  Future<bool> _ensurePolkitRule() async {
-    if (!Platform.isLinux) return false;
-    if (await _hasPolkitRule) return true;
+  Future<AuthorizeCode> _authorizeLinuxCore() async {
+    if (appPath.isAppImage) {
+      await appPath.ensureAppImageCoreSynced();
+    }
+    final corePath = appPath.corePath;
+    if (await _isOnNosuidMount(corePath)) {
+      globalState.showNotifier(appLocalizations.coreMountNosuid);
+      return AuthorizeCode.error;
+    }
+    if (await _isSetuidRootOwned(corePath, 'root:')) return AuthorizeCode.none;
 
-    final bundled = File(
-      '${appPath.executableDirPath}/$_polkitRuleFileName',
-    );
-    if (!await bundled.exists()) return false;
+    final needCapabilities = !await _hasCoreCapabilities();
+    final dataDirRepair = await _dataDirRepairScript;
+    final stagedRule = await _stagePolkitRule();
+    if (!needCapabilities && dataDirRepair == null && stagedRule == null) {
+      return AuthorizeCode.none;
+    }
 
-    final staged = File(join(await appPath.homeDirPath, _polkitRuleFileName));
-    await staged.writeAsString(await bundled.readAsString(), flush: true);
+    final script = [
+      _legacyPolkitRuleCleanupScript,
+      ?dataDirRepair,
+      if (stagedRule != null) _polkitRuleInstallScript(stagedRule.path),
+      if (needCapabilities) _linuxCapabilityScript(corePath),
+    ].join('\n');
+    final result = await _runPrivileged(script);
+    await stagedRule?.delete();
+    if (stagedRule != null && result != null) {
+      await _recordPolkitRuleOutcome(result.stdout);
+    }
 
-    final script =
-        'install -Dm644 ${_shellEscape(staged.path)} $_polkitRuleSystemPath';
+    if (!needCapabilities) {
+      if (result?.exitCode != 0) {
+        commonPrint.log('Privileged repair failed: ${result?.stderr.trim()}');
+      }
+      return AuthorizeCode.none;
+    }
 
-    final run = await _runPrivileged(script);
-    await staged.delete();
-    if (!run.ok) return false;
-    return _hasPolkitRule;
+    final fallback = switch (result?.exitCode) {
+      _setcapNotInstalledExit => appLocalizations.setcapNotInstalledFallback,
+      _xattrUnsupportedExit => appLocalizations.xattrUnsupportedFallback,
+      _setcapFailedExit => appLocalizations.setcapFailedFallback,
+      _ => null,
+    };
+    if (fallback != null) {
+      commonPrint.log('Falling back to setuid: ${result?.stderr.trim()}');
+      globalState.showNotifier(fallback);
+      return AuthorizeCode.success;
+    }
+    if (result?.exitCode == 0) return AuthorizeCode.success;
+
+    globalState.showNotifier(appLocalizations.tunEnableRequireAdmin);
+    return AuthorizeCode.error;
   }
 
-  static const _polkitRuleFileName = '99-bettbox.rules';
+  static const _setcapNotInstalledExit = 10;
+
+  static const _xattrUnsupportedExit = 11;
+
+  static const _setcapFailedExit = 12;
+
+  static const _polkitRuleFileName = '90-bettbox.rules';
+
+  static const _legacyPolkitRuleFileName = '99-bettbox.rules';
 
   static const _polkitRuleSystemPath =
       '/usr/share/polkit-1/rules.d/$_polkitRuleFileName';
 
-  Future<_SetcapResult> _trySetcap() async {
-    if (!await _hasSetcapBinary) return _SetcapResult.notInstalled;
-    if (!_coreDirSupportsXattr) return _SetcapResult.xattrUnsupported;
-
-    final run = await _runPrivileged(
-      await _linuxSetcapScript,
-      notifyOnFailure: false,
-    );
-    if (run.ok) return _SetcapResult.granted;
-
-    commonPrint.log('setcap failed unexpectedly: ${run.stderr.trim()}');
-    return _SetcapResult.failed;
-  }
-
-  void _showSetuidFallback(_SetcapResult result) {
-    final message = switch (result) {
-      _SetcapResult.notInstalled =>
-        'setcap is not installed or not in the PATH, fallback to setuid',
-      _SetcapResult.xattrUnsupported =>
-        'xattr is not supported by the filesystem, fallback to setuid',
-      _SetcapResult.failed =>
-        'Could not grant file capabilities, fallback to setuid',
-      _SetcapResult.granted => null,
-    };
-    if (message == null) return;
-    commonPrint.log('Falling back to setuid: $result');
-    globalState.showNotifier(message);
-  }
-
-  static Future<String> get _linuxSetcapScript async {
-    final core = _shellEscape(appPath.corePath);
+  static String _linuxCapabilityScript(String corePath) {
+    final core = _shellEscape(corePath);
     const capabilities = 'cap_net_admin,cap_net_bind_service,cap_net_raw=+ep';
-
-    return "setcap '$capabilities' $core && sync";
+    return [
+      'if command -v setcap >/dev/null 2>&1; then',
+      "  if output=\$(setcap '$capabilities' $core 2>&1); then",
+      '    sync',
+      '    exit 0',
+      '  fi',
+      '  echo "\$output" >&2',
+      '  case "\$output" in',
+      '    *"not supported"*) fallback=$_xattrUnsupportedExit ;;',
+      '    *) fallback=$_setcapFailedExit ;;',
+      '  esac',
+      'else',
+      '  fallback=$_setcapNotInstalledExit',
+      'fi',
+      'chown root:root $core && chmod u+s $core && sync || exit 1',
+      'exit "\$fallback"',
+    ].join('\n');
   }
 
-  static Future<String> get _linuxSetuidScript async {
-    final core = _shellEscape(appPath.corePath);
+  static const _legacyPolkitRuleCleanupScript =
+      'rm -f /etc/polkit-1/rules.d/$_legacyPolkitRuleFileName '
+      '/usr/share/polkit-1/rules.d/$_legacyPolkitRuleFileName';
 
-    return 'chown root:root $core && chmod u+s $core && sync';
+  static const _polkitRuleEtcPath =
+      '/etc/polkit-1/rules.d/$_polkitRuleFileName';
+
+  static const _polkitRuleEtcMarker = 'bettbox-polkit-rule:etc';
+
+  static const _polkitRuleFailedMarker = 'bettbox-polkit-rule:failed';
+
+  static const _polkitRuleSettledKey = 'linux_polkit_rule_settled';
+
+  static String _polkitRuleInstallScript(String stagedPath) {
+    final staged = _shellEscape(stagedPath);
+    return [
+      'if ! install -Dm644 $staged $_polkitRuleSystemPath 2>/dev/null; then',
+      '  if install -Dm644 $staged $_polkitRuleEtcPath; then',
+      '    echo $_polkitRuleEtcMarker',
+      '  else',
+      '    echo $_polkitRuleFailedMarker',
+      '  fi',
+      'fi',
+    ].join('\n');
   }
 
-  static Future<bool> get _hasPolkitRule async =>
-      File(_polkitRuleSystemPath).exists();
+  static Future<void> _recordPolkitRuleOutcome(String stdout) async {
+    final settled =
+        stdout.contains(_polkitRuleEtcMarker) ||
+        stdout.contains(_polkitRuleFailedMarker);
+    if (!settled) return;
+    commonPrint.log('Polkit rule outcome: ${stdout.trim()}');
+    final prefs = await preferences.sharedPreferencesCompleter.future;
+    await prefs?.setBool(_polkitRuleSettledKey, true);
+  }
 
-  static Future<int?> _currentUid() => _idField('-u');
-
-  static Future<int?> _currentGid() => _idField('-g');
-
-  static Future<bool> get _hasSetcapBinary async {
+  static Future<bool> _isOnNosuidMount(String path) async {
     try {
-      final result = await Process.run('sh', ['-c', 'command -v setcap']);
-      return result.exitCode == 0;
+      final target = await File(path).resolveSymbolicLinks();
+      final lines = await File('/proc/self/mountinfo').readAsLines();
+      final octal = RegExp(r'\\([0-7]{3})');
+      var bestLength = -1;
+      var nosuid = false;
+      for (final line in lines) {
+        final fields = line.split(' ');
+        if (fields.length < 6) continue;
+        final mountPoint = fields[4].replaceAllMapped(
+          octal,
+          (m) => String.fromCharCode(int.parse(m[1] ?? '0', radix: 8)),
+        );
+        final contains =
+            mountPoint == '/' ||
+            target == mountPoint ||
+            target.startsWith('$mountPoint/');
+        if (!contains || mountPoint.length < bestLength) continue;
+        bestLength = mountPoint.length;
+        nosuid = fields[5].split(',').contains('nosuid');
+      }
+      return nosuid;
     } catch (_) {
       return false;
     }
   }
 
-  static Future<bool> get _hasForeignOwnedDataDir async {
-    try {
-      final result = await Process.run('sh', [
-        '-c',
-        'find "\$1" ! -user "\$(id -u)" -print -quit 2>/dev/null',
-        'sh',
-        await appPath.homeDirPath,
-      ]);
-      return result.exitCode == 0 && result.stdout.toString().trim().isNotEmpty;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<void> _repairForeignOwnedDataDir() async {
-    if (!await _hasForeignOwnedDataDir) return;
-
-    final uid = await _currentUid();
-    final gid = await _currentGid();
-    if (uid == null || gid == null) {
-      commonPrint.log('Data dir repair skipped: cannot determine own uid/gid');
+  Future<void> verifyCoreProcessPrivileges(int pid) async {
+    if (!Platform.isLinux || !globalState.appState.realTunEnable) return;
+    final corePath = appPath.corePath;
+    if (!await _isSetuidRootOwned(corePath, 'root:') &&
+        !await _hasCoreCapabilities()) {
       return;
     }
-
-    final dataDir = _shellEscape(await appPath.homeDirPath);
-    final run = await _runPrivileged(
-      'if [ -d $dataDir ]; then chown -R $uid:$gid $dataDir; fi',
-      notifyOnFailure: false,
-    );
-    if (run.ok) {
-      commonPrint.log('Repaired data dir entries owned by another user');
-    } else {
-      commonPrint.log('Data dir repair failed: ${run.stderr.trim()}');
-    }
-  }
-
-  static bool get _coreDirSupportsXattr {
-    final directory = dirname(appPath.corePath);
     try {
-      final libc = DynamicLibrary.open('libc.so.6');
-      final getxattr = libc.lookupFunction<
-        IntPtr Function(IntPtr, IntPtr, IntPtr, IntPtr),
-        int Function(int, int, int, int)
-      >('getxattr');
-      final errnoLocation = libc.lookupFunction<IntPtr Function(), int Function()>(
-        '__errno_location',
-      );
-
-      final pathPtr = directory.toNativeUtf8();
-      final namePtr = _xattrProbeName.toNativeUtf8();
-      try {
-        getxattr(pathPtr.address, namePtr.address, 0, 0);
-        final errno = Pointer<Int32>.fromAddress(errnoLocation()).value;
-        return errno != _eOpNotSupp && errno != _eNoSys;
-      } finally {
-        malloc.free(pathPtr);
-        malloc.free(namePtr);
-      }
+      final lines = await File('/proc/$pid/status').readAsLines();
+      String? field(String name) => lines
+          .where((line) => line.startsWith('$name:'))
+          .map((line) => line.substring(name.length + 1).trim())
+          .firstOrNull;
+      final effectiveUid = field(
+        'Uid',
+      )?.split(RegExp(r'\s+')).elementAtOrNull(1);
+      final capEff = int.tryParse(field('CapEff') ?? '', radix: 16) ?? 0;
+      const capNetAdmin = 1 << 12;
+      if (effectiveUid == '0' || capEff & capNetAdmin != 0) return;
+      commonPrint.log('Core process lacks CAP_NET_ADMIN: CapEff=$capEff');
+      globalState.showNotifier(appLocalizations.coreCapabilityNotEffective);
     } catch (e) {
-      commonPrint.log('xattr probe unavailable, assuming supported: $e');
-      return true;
+      commonPrint.log('Core privilege check skipped: $e');
     }
   }
 
-  static const _xattrProbeName = 'user.bettbox.xattr-probe';
+  static Future<File?> _stagePolkitRule() async {
+    final bundled = File(join(appPath.executableDirPath, _polkitRuleFileName));
+    if (!await bundled.exists()) return null;
+    if (await File(_polkitRuleSystemPath).exists()) return null;
+    final prefs = await preferences.sharedPreferencesCompleter.future;
+    if (prefs?.getBool(_polkitRuleSettledKey) ?? false) return null;
+    return bundled.copy(join(await appPath.homeDirPath, _polkitRuleFileName));
+  }
 
-  static const _eOpNotSupp = 95;
+  static Future<String?> get _dataDirRepairScript async {
+    final uid = await _idField('-u');
+    final gid = await _idField('-g');
+    if (uid == null || gid == null) return null;
 
-  static const _eNoSys = 38;
+    final homeDir = await appPath.homeDirPath;
+    try {
+      final result = await Process.run('find', [
+        homeDir,
+        '!',
+        '-user',
+        '$uid',
+        '-print',
+        '-quit',
+      ]);
+      if (result.stdout.toString().trim().isEmpty) return null;
+    } catch (_) {
+      return null;
+    }
+    return 'chown -R $uid:$gid ${_shellEscape(homeDir)}';
+  }
 
   static Future<int?> _idField(String flag) async {
     try {
@@ -350,18 +379,17 @@ class System {
     }
   }
 
-  Future<({bool ok, String stderr})> _runPrivileged(
-    String script, {
-    bool notifyOnFailure = true,
-  }) async {
+  Future<({int exitCode, String stdout, String stderr})?> _runPrivileged(
+    String script,
+  ) async {
     try {
       final result = await Process.run('pkexec', ['sh', '-c', script]);
-      if (result.exitCode == 0) return (ok: true, stderr: '');
       if (result.exitCode != 127) {
-        if (notifyOnFailure) {
-          globalState.showNotifier(appLocalizations.tunEnableRequireAdmin);
-        }
-        return (ok: false, stderr: result.stderr.toString());
+        return (
+          exitCode: result.exitCode,
+          stdout: result.stdout.toString(),
+          stderr: result.stderr.toString(),
+        );
       }
     } catch (e) {
       commonPrint.warn('pkexec failed: $e');
@@ -375,21 +403,31 @@ class System {
         value: '',
       ),
     );
-    if (password == null || password.isEmpty) {
-      if (notifyOnFailure) {
-        globalState.showNotifier(appLocalizations.tunEnableRequireAdmin);
-      }
-      return (ok: false, stderr: '');
-    }
+    if (password == null || password.isEmpty) return null;
 
-    final result = await Process.run(Platform.environment['SHELL'] ?? 'bash', [
-      '-c',
-      'echo ${_shellEscape(password)} | sudo -S sh -c ${_shellEscape(script)}',
-    ]);
-    if (result.exitCode != 0 && notifyOnFailure) {
-      globalState.showNotifier(appLocalizations.tunEnableRequireAdmin);
+    final Process process;
+    try {
+      process = await Process.start('sudo', [
+        '-S',
+        '-p',
+        '',
+        'sh',
+        '-c',
+        script,
+      ]);
+    } catch (e) {
+      commonPrint.warn('sudo failed: $e');
+      return null;
     }
-    return (ok: result.exitCode == 0, stderr: result.stderr.toString());
+    final stdout = process.stdout.transform(utf8.decoder).join();
+    final stderr = process.stderr.transform(utf8.decoder).join();
+    process.stdin.writeln(password);
+    await process.stdin.close();
+    return (
+      exitCode: await process.exitCode,
+      stdout: await stdout,
+      stderr: await stderr,
+    );
   }
 
   Future<void> back() async {

@@ -825,7 +825,12 @@
   "logLevelDebugHint": "Режим {level} подходит для отладки сети; в обычной работе его лучше отключить",
   "collapse": "Свернуть",
   "analyzeLogPrompt": "Проанализируй лог Bettbox (Mihomo): {log}",
-  "geoBuiltInResources": "Встроенные ресурсы GEO"
+  "geoBuiltInResources": "Встроенные ресурсы GEO",
+  "setcapNotInstalledFallback": "setcap не установлен, выполнен откат на setuid",
+  "xattrUnsupportedFallback": "Файловая система не поддерживает file capabilities (xattr), выполнен откат на setuid",
+  "setcapFailedFallback": "Не удалось выдать file capabilities, выполнен откат на setuid",
+  "coreMountNosuid": "Ядро находится на файловой системе, смонтированной с nosuid, поэтому file capabilities и setuid не действуют",
+  "coreCapabilityNotEffective": "Авторизация ядра не применилась: у запущенного ядра нет CAP_NET_ADMIN, TUN может не работать"
 }
 
 

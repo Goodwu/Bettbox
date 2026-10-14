@@ -821,7 +821,12 @@
   "logLevelDebugHint": "{level} mode is for network debugging; turn it off for daily use",
   "collapse": "Collapse",
   "analyzeLogPrompt": "Analyze Bettbox (Mihomo) log: {log}",
-  "geoBuiltInResources": "GEO Built-in Resources"
+  "geoBuiltInResources": "GEO Built-in Resources",
+  "setcapNotInstalledFallback": "setcap is not installed, falling back to setuid",
+  "xattrUnsupportedFallback": "The filesystem does not support file capabilities, falling back to setuid",
+  "setcapFailedFallback": "Could not grant file capabilities, falling back to setuid",
+  "coreMountNosuid": "The core is on a filesystem mounted with nosuid, so file capabilities and setuid cannot take effect",
+  "coreCapabilityNotEffective": "Core authorization did not take effect: the running core lacks CAP_NET_ADMIN, TUN may fail"
 }
 
 

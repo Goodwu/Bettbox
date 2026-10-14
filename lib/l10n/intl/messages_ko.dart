@@ -272,8 +272,14 @@ class MessageLookup extends MessageLookupByLibrary {
     "copyLink": MessageLookupByLibrary.simpleMessage("링크 복사"),
     "copySuccess": MessageLookupByLibrary.simpleMessage("복사 성공"),
     "core": MessageLookupByLibrary.simpleMessage("코어"),
+    "coreCapabilityNotEffective": MessageLookupByLibrary.simpleMessage(
+      "코어 권한 부여가 적용되지 않았습니다: 실행 중인 코어에 CAP_NET_ADMIN이 없어 TUN이 작동하지 않을 수 있습니다",
+    ),
     "coreConnected": MessageLookupByLibrary.simpleMessage("연결됨"),
     "coreInfo": MessageLookupByLibrary.simpleMessage("코어 정보"),
+    "coreMountNosuid": MessageLookupByLibrary.simpleMessage(
+      "코어가 nosuid로 마운트된 파일 시스템에 있어 파일 capability와 setuid가 적용되지 않습니다",
+    ),
     "coreStatus": MessageLookupByLibrary.simpleMessage("코어 부하 상세"),
     "coreSuspended": MessageLookupByLibrary.simpleMessage("일시 중지됨"),
     "country": MessageLookupByLibrary.simpleMessage("지역"),
@@ -963,6 +969,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "selectedCountTitle": m17,
     "serviceReady": MessageLookupByLibrary.simpleMessage("서비스 준비 완료"),
     "serviceRunning": MessageLookupByLibrary.simpleMessage("서비스 실행 중"),
+    "setcapFailedFallback": MessageLookupByLibrary.simpleMessage(
+      "파일 capability를 부여할 수 없어 setuid로 대체했습니다",
+    ),
+    "setcapNotInstalledFallback": MessageLookupByLibrary.simpleMessage(
+      "setcap이 설치되어 있지 않아 setuid로 대체했습니다",
+    ),
     "settings": MessageLookupByLibrary.simpleMessage("설정"),
     "sharedAddress": MessageLookupByLibrary.simpleMessage("공유 주소"),
     "show": MessageLookupByLibrary.simpleMessage("표시"),
@@ -1211,6 +1223,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "whitelistMode": MessageLookupByLibrary.simpleMessage("화이트리스트 모드"),
     "writeToSystem": MessageLookupByLibrary.simpleMessage("시스템 적용"),
     "writeToSystemDesc": MessageLookupByLibrary.simpleMessage("관리자 권한이 필요합니다"),
+    "xattrUnsupportedFallback": MessageLookupByLibrary.simpleMessage(
+      "파일 시스템이 파일 capability(xattr)를 지원하지 않아 setuid로 대체했습니다",
+    ),
     "years": m19,
   };
 }

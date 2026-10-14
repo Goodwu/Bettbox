@@ -332,8 +332,14 @@ class MessageLookup extends MessageLookupByLibrary {
     "copyLink": MessageLookupByLibrary.simpleMessage("Copy Link"),
     "copySuccess": MessageLookupByLibrary.simpleMessage("Copy Successful"),
     "core": MessageLookupByLibrary.simpleMessage("Core"),
+    "coreCapabilityNotEffective": MessageLookupByLibrary.simpleMessage(
+      "Core authorization did not take effect: the running core lacks CAP_NET_ADMIN, TUN may fail",
+    ),
     "coreConnected": MessageLookupByLibrary.simpleMessage("Connected"),
     "coreInfo": MessageLookupByLibrary.simpleMessage("Core Info"),
+    "coreMountNosuid": MessageLookupByLibrary.simpleMessage(
+      "The core is on a filesystem mounted with nosuid, so file capabilities and setuid cannot take effect",
+    ),
     "coreStatus": MessageLookupByLibrary.simpleMessage("Core Status"),
     "coreSuspended": MessageLookupByLibrary.simpleMessage("Suspended"),
     "country": MessageLookupByLibrary.simpleMessage("Country"),
@@ -1201,6 +1207,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "selectedCountTitle": m17,
     "serviceReady": MessageLookupByLibrary.simpleMessage("Service Ready"),
     "serviceRunning": MessageLookupByLibrary.simpleMessage("Service Running"),
+    "setcapFailedFallback": MessageLookupByLibrary.simpleMessage(
+      "Could not grant file capabilities, falling back to setuid",
+    ),
+    "setcapNotInstalledFallback": MessageLookupByLibrary.simpleMessage(
+      "setcap is not installed, falling back to setuid",
+    ),
     "settings": MessageLookupByLibrary.simpleMessage("Settings"),
     "sharedAddress": MessageLookupByLibrary.simpleMessage("Shared Address"),
     "show": MessageLookupByLibrary.simpleMessage("Show"),
@@ -1490,6 +1502,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "writeToSystem": MessageLookupByLibrary.simpleMessage("Write to System"),
     "writeToSystemDesc": MessageLookupByLibrary.simpleMessage(
       "Requires administrator privileges",
+    ),
+    "xattrUnsupportedFallback": MessageLookupByLibrary.simpleMessage(
+      "The filesystem does not support file capabilities, falling back to setuid",
     ),
     "years": m19,
   };

@@ -240,8 +240,14 @@ class MessageLookup extends MessageLookupByLibrary {
     "copyLink": MessageLookupByLibrary.simpleMessage("複製連結"),
     "copySuccess": MessageLookupByLibrary.simpleMessage("複製成功"),
     "core": MessageLookupByLibrary.simpleMessage("內核"),
+    "coreCapabilityNotEffective": MessageLookupByLibrary.simpleMessage(
+      "核心授權未生效：執行中的核心缺少 CAP_NET_ADMIN，TUN 可能無法運作",
+    ),
     "coreConnected": MessageLookupByLibrary.simpleMessage("已連線"),
     "coreInfo": MessageLookupByLibrary.simpleMessage("內核資訊"),
+    "coreMountNosuid": MessageLookupByLibrary.simpleMessage(
+      "核心所在檔案系統以 nosuid 掛載，檔案能力與 setuid 均無法生效",
+    ),
     "coreStatus": MessageLookupByLibrary.simpleMessage("核心負載詳情"),
     "coreSuspended": MessageLookupByLibrary.simpleMessage("已掛起"),
     "country": MessageLookupByLibrary.simpleMessage("區域"),
@@ -873,6 +879,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "selectedCountTitle": m17,
     "serviceReady": MessageLookupByLibrary.simpleMessage("服務已就緒"),
     "serviceRunning": MessageLookupByLibrary.simpleMessage("服務正在執行中"),
+    "setcapFailedFallback": MessageLookupByLibrary.simpleMessage(
+      "無法授予檔案能力，已回退到 setuid",
+    ),
+    "setcapNotInstalledFallback": MessageLookupByLibrary.simpleMessage(
+      "未安裝 setcap，已回退到 setuid",
+    ),
     "settings": MessageLookupByLibrary.simpleMessage("設定"),
     "sharedAddress": MessageLookupByLibrary.simpleMessage("共享位址"),
     "show": MessageLookupByLibrary.simpleMessage("顯示"),
@@ -1087,6 +1099,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "whitelistMode": MessageLookupByLibrary.simpleMessage("白名單模式"),
     "writeToSystem": MessageLookupByLibrary.simpleMessage("寫入系統"),
     "writeToSystemDesc": MessageLookupByLibrary.simpleMessage("需要管理員權限"),
+    "xattrUnsupportedFallback": MessageLookupByLibrary.simpleMessage(
+      "檔案系統不支援檔案能力（xattr），已回退到 setuid",
+    ),
     "years": m19,
   };
 }

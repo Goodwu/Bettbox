@@ -822,7 +822,12 @@
   "logLevelDebugHint": "{level}モードはネットワークのデバッグ向けです。普段はオフにすることをおすすめします",
   "collapse": "折りたたむ",
   "analyzeLogPrompt": "Bettbox(Mihomo)のログを分析:{log}",
-  "geoBuiltInResources": "GEO 組み込みリソース"
+  "geoBuiltInResources": "GEO 組み込みリソース",
+  "setcapNotInstalledFallback": "setcap がインストールされていないため、setuid にフォールバックしました",
+  "xattrUnsupportedFallback": "ファイルシステムがファイルケーパビリティ（xattr）に対応していないため、setuid にフォールバックしました",
+  "setcapFailedFallback": "ファイルケーパビリティを付与できなかったため、setuid にフォールバックしました",
+  "coreMountNosuid": "コアが nosuid でマウントされたファイルシステム上にあるため、ファイルケーパビリティと setuid は有効になりません",
+  "coreCapabilityNotEffective": "コアの権限付与が有効になっていません：実行中のコアに CAP_NET_ADMIN がなく、TUN が動作しない可能性があります"
 }
 
 

@@ -341,8 +341,14 @@ class MessageLookup extends MessageLookupByLibrary {
     "copyLink": MessageLookupByLibrary.simpleMessage("Копировать ссылку"),
     "copySuccess": MessageLookupByLibrary.simpleMessage("Скопировано"),
     "core": MessageLookupByLibrary.simpleMessage("Ядро"),
+    "coreCapabilityNotEffective": MessageLookupByLibrary.simpleMessage(
+      "Авторизация ядра не применилась: у запущенного ядра нет CAP_NET_ADMIN, TUN может не работать",
+    ),
     "coreConnected": MessageLookupByLibrary.simpleMessage("Подключено"),
     "coreInfo": MessageLookupByLibrary.simpleMessage("Информация о ядре"),
+    "coreMountNosuid": MessageLookupByLibrary.simpleMessage(
+      "Ядро находится на файловой системе, смонтированной с nosuid, поэтому file capabilities и setuid не действуют",
+    ),
     "coreStatus": MessageLookupByLibrary.simpleMessage("Статус ядра"),
     "coreSuspended": MessageLookupByLibrary.simpleMessage("Приостановлено"),
     "country": MessageLookupByLibrary.simpleMessage("Регион"),
@@ -1242,6 +1248,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "selectedCountTitle": m17,
     "serviceReady": MessageLookupByLibrary.simpleMessage("Служба готова"),
     "serviceRunning": MessageLookupByLibrary.simpleMessage("Служба запущена"),
+    "setcapFailedFallback": MessageLookupByLibrary.simpleMessage(
+      "Не удалось выдать file capabilities, выполнен откат на setuid",
+    ),
+    "setcapNotInstalledFallback": MessageLookupByLibrary.simpleMessage(
+      "setcap не установлен, выполнен откат на setuid",
+    ),
     "settings": MessageLookupByLibrary.simpleMessage("Настройки"),
     "sharedAddress": MessageLookupByLibrary.simpleMessage("Общий адрес"),
     "show": MessageLookupByLibrary.simpleMessage("Показать"),
@@ -1565,6 +1577,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "writeToSystem": MessageLookupByLibrary.simpleMessage("Записать в систему"),
     "writeToSystemDesc": MessageLookupByLibrary.simpleMessage(
       "Требуются права администратора",
+    ),
+    "xattrUnsupportedFallback": MessageLookupByLibrary.simpleMessage(
+      "Файловая система не поддерживает file capabilities (xattr), выполнен откат на setuid",
     ),
     "years": m19,
   };

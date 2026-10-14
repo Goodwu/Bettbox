@@ -330,8 +330,14 @@ class MessageLookup extends MessageLookupByLibrary {
     "copyLink": MessageLookupByLibrary.simpleMessage("کپی لینک"),
     "copySuccess": MessageLookupByLibrary.simpleMessage("با موفقیت کپی شد"),
     "core": MessageLookupByLibrary.simpleMessage("هسته"),
+    "coreCapabilityNotEffective": MessageLookupByLibrary.simpleMessage(
+      "مجوز هسته اعمال نشد: هسته در حال اجرا CAP_NET_ADMIN ندارد و TUN ممکن است کار نکند",
+    ),
     "coreConnected": MessageLookupByLibrary.simpleMessage("متصل شد"),
     "coreInfo": MessageLookupByLibrary.simpleMessage("اطلاعات هسته"),
+    "coreMountNosuid": MessageLookupByLibrary.simpleMessage(
+      "هسته روی سیستم فایلی با گزینه nosuid قرار دارد، بنابراین قابلیت‌های فایل و setuid اعمال نمی‌شوند",
+    ),
     "coreStatus": MessageLookupByLibrary.simpleMessage("وضعیت هسته"),
     "coreSuspended": MessageLookupByLibrary.simpleMessage("معلق شد"),
     "country": MessageLookupByLibrary.simpleMessage("منطقه"),
@@ -1233,6 +1239,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "serviceRunning": MessageLookupByLibrary.simpleMessage(
       "سرویس در حال اجرا است",
     ),
+    "setcapFailedFallback": MessageLookupByLibrary.simpleMessage(
+      "اعطای قابلیت‌های فایل ممکن نشد؛ به setuid بازگشت داده شد",
+    ),
+    "setcapNotInstalledFallback": MessageLookupByLibrary.simpleMessage(
+      "setcap نصب نیست؛ به setuid بازگشت داده شد",
+    ),
     "settings": MessageLookupByLibrary.simpleMessage("تنظیمات"),
     "sharedAddress": MessageLookupByLibrary.simpleMessage("آدرس اشتراکی"),
     "show": MessageLookupByLibrary.simpleMessage("نمایش"),
@@ -1532,6 +1544,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "writeToSystem": MessageLookupByLibrary.simpleMessage("اعمال به سیستم"),
     "writeToSystemDesc": MessageLookupByLibrary.simpleMessage(
       "نیازمند دسترسی مدیریت (Admin)",
+    ),
+    "xattrUnsupportedFallback": MessageLookupByLibrary.simpleMessage(
+      "سیستم فایل از قابلیت‌های فایل (xattr) پشتیبانی نمی‌کند؛ به setuid بازگشت داده شد",
     ),
     "years": m19,
   };

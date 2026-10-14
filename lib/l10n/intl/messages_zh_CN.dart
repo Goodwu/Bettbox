@@ -238,8 +238,14 @@ class MessageLookup extends MessageLookupByLibrary {
     "copyLink": MessageLookupByLibrary.simpleMessage("复制链接"),
     "copySuccess": MessageLookupByLibrary.simpleMessage("复制成功"),
     "core": MessageLookupByLibrary.simpleMessage("内核"),
+    "coreCapabilityNotEffective": MessageLookupByLibrary.simpleMessage(
+      "内核授权未生效：运行中的内核缺少 CAP_NET_ADMIN，TUN 可能无法工作",
+    ),
     "coreConnected": MessageLookupByLibrary.simpleMessage("已连接"),
     "coreInfo": MessageLookupByLibrary.simpleMessage("内核信息"),
+    "coreMountNosuid": MessageLookupByLibrary.simpleMessage(
+      "内核所在文件系统以 nosuid 挂载，文件能力与 setuid 均无法生效",
+    ),
     "coreStatus": MessageLookupByLibrary.simpleMessage("内核负载详情"),
     "coreSuspended": MessageLookupByLibrary.simpleMessage("已挂起"),
     "country": MessageLookupByLibrary.simpleMessage("区域"),
@@ -861,6 +867,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "selectedCountTitle": m17,
     "serviceReady": MessageLookupByLibrary.simpleMessage("服务已就绪"),
     "serviceRunning": MessageLookupByLibrary.simpleMessage("服务正在运行中"),
+    "setcapFailedFallback": MessageLookupByLibrary.simpleMessage(
+      "无法授予文件能力，已回退到 setuid",
+    ),
+    "setcapNotInstalledFallback": MessageLookupByLibrary.simpleMessage(
+      "未安装 setcap，已回退到 setuid",
+    ),
     "settings": MessageLookupByLibrary.simpleMessage("设置"),
     "sharedAddress": MessageLookupByLibrary.simpleMessage("共享地址"),
     "show": MessageLookupByLibrary.simpleMessage("显示"),
@@ -1071,6 +1083,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "whitelistMode": MessageLookupByLibrary.simpleMessage("白名单模式"),
     "writeToSystem": MessageLookupByLibrary.simpleMessage("写入系统"),
     "writeToSystemDesc": MessageLookupByLibrary.simpleMessage("需要管理员权限"),
+    "xattrUnsupportedFallback": MessageLookupByLibrary.simpleMessage(
+      "文件系统不支持文件能力（xattr），已回退到 setuid",
+    ),
     "years": m19,
   };
 }
