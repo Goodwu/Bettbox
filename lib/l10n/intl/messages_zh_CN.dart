@@ -584,9 +584,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "nameserverDesc": MessageLookupByLibrary.simpleMessage("用于解析域名"),
     "nameserverPolicy": MessageLookupByLibrary.simpleMessage("域名服务器策略"),
     "nameserverPolicyDesc": MessageLookupByLibrary.simpleMessage("指定对应域名服务器策略"),
-    "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage("触感反馈"),
+    "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage("动效反馈"),
     "navBarHapticFeedbackDesc": MessageLookupByLibrary.simpleMessage(
-      "底部导航栏切换震动反馈",
+      "底部导航栏动画触感反馈",
     ),
     "navConnections": MessageLookupByLibrary.simpleMessage("连接"),
     "navTools": MessageLookupByLibrary.simpleMessage("更多"),
@@ -687,7 +687,6 @@ class MessageLookup extends MessageLookupByLibrary {
     "overrideExperimentalDesc": MessageLookupByLibrary.simpleMessage(
       "开启后将覆盖配置中的实验性配置",
     ),
-    "overrideInvalidTip": MessageLookupByLibrary.simpleMessage("在脚本模式下不生效"),
     "overrideNtp": MessageLookupByLibrary.simpleMessage("覆写 NTP"),
     "overrideNtpDesc": MessageLookupByLibrary.simpleMessage(
       "开启后将覆盖配置中的 NTP 选项",
@@ -851,6 +850,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "ruleTarget": MessageLookupByLibrary.simpleMessage("规则目标"),
     "rulesCount": MessageLookupByLibrary.simpleMessage("路由规则"),
     "runTime": MessageLookupByLibrary.simpleMessage("启动时间"),
+    "runningMode": MessageLookupByLibrary.simpleMessage("运行模式"),
     "runtimeConfig": MessageLookupByLibrary.simpleMessage("运行时配置"),
     "save": MessageLookupByLibrary.simpleMessage("保存"),
     "saveChanges": MessageLookupByLibrary.simpleMessage("是否保存更改？"),

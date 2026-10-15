@@ -813,10 +813,10 @@ class MessageLookup extends MessageLookupByLibrary {
       "تعیین سیاست DNS برای دامنه‌ها",
     ),
     "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage(
-      "بازخورد لمسی",
+      "بازخورد حرکتی",
     ),
     "navBarHapticFeedbackDesc": MessageLookupByLibrary.simpleMessage(
-      "لرزش هنگام تغییر زبانه‌های نوار پایین",
+      "انیمیشن و بازخورد لمسی نوار ناوبری پایین",
     ),
     "navConnections": MessageLookupByLibrary.simpleMessage("اتصالات"),
     "navTools": MessageLookupByLibrary.simpleMessage("ابزارها"),
@@ -958,9 +958,6 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "overrideExperimentalDesc": MessageLookupByLibrary.simpleMessage(
       "جایگزینی تنظیمات آزمایشی پروفایل",
-    ),
-    "overrideInvalidTip": MessageLookupByLibrary.simpleMessage(
-      "در حالت اسکریپت اعمال نمی‌شود",
     ),
     "overrideNtp": MessageLookupByLibrary.simpleMessage("اورراید NTP"),
     "overrideNtpDesc": MessageLookupByLibrary.simpleMessage(
@@ -1211,6 +1208,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "ruleTarget": MessageLookupByLibrary.simpleMessage("مقصد قانون"),
     "rulesCount": MessageLookupByLibrary.simpleMessage("قوانین مسیریابی"),
     "runTime": MessageLookupByLibrary.simpleMessage("مدت زمان اجرا"),
+    "runningMode": MessageLookupByLibrary.simpleMessage("حالت اجرا"),
     "runtimeConfig": MessageLookupByLibrary.simpleMessage("پیکربندی زمان اجرا"),
     "save": MessageLookupByLibrary.simpleMessage("ذخیره"),
     "saveChanges": MessageLookupByLibrary.simpleMessage(

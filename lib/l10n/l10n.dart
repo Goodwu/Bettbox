@@ -235,6 +235,16 @@ class AppLocalizations {
     );
   }
 
+  /// `Running Mode`
+  String get runningMode {
+    return Intl.message(
+      'Running Mode',
+      name: 'runningMode',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Network`
   String get networkDetection {
     return Intl.message(
@@ -5005,20 +5015,20 @@ class AppLocalizations {
     );
   }
 
-  /// `Haptic Feedback`
+  /// `Motion Feedback`
   String get navBarHapticFeedback {
     return Intl.message(
-      'Haptic Feedback',
+      'Motion Feedback',
       name: 'navBarHapticFeedback',
       desc: '',
       args: [],
     );
   }
 
-  /// `Vibrate on navigation tab switch`
+  /// `Bottom navigation bar animation and haptic feedback`
   String get navBarHapticFeedbackDesc {
     return Intl.message(
-      'Vibrate on navigation tab switch',
+      'Bottom navigation bar animation and haptic feedback',
       name: 'navBarHapticFeedbackDesc',
       desc: '',
       args: [],
@@ -5395,16 +5405,6 @@ class AppLocalizations {
     return Intl.message(
       'Please enter a script name',
       name: 'pleaseEnterScriptName',
-      desc: '',
-      args: [],
-    );
-  }
-
-  /// `Inactive in script mode`
-  String get overrideInvalidTip {
-    return Intl.message(
-      'Inactive in script mode',
-      name: 'overrideInvalidTip',
       desc: '',
       args: [],
     );

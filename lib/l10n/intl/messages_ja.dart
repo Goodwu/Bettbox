@@ -644,9 +644,11 @@ class MessageLookup extends MessageLookupByLibrary {
     "nameserverPolicyDesc": MessageLookupByLibrary.simpleMessage(
       "特定ドメイン用のDNSポリシーを指定",
     ),
-    "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage("触覚フィードバック"),
+    "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage(
+      "モーションフィードバック",
+    ),
     "navBarHapticFeedbackDesc": MessageLookupByLibrary.simpleMessage(
-      "ボトムナビゲーション切り替え時の振動フィードバック",
+      "ボトムナビゲーションのアニメーションと触覚フィードバック",
     ),
     "navConnections": MessageLookupByLibrary.simpleMessage("セッション"),
     "navTools": MessageLookupByLibrary.simpleMessage("ツール"),
@@ -756,9 +758,6 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "overrideExperimentalDesc": MessageLookupByLibrary.simpleMessage(
       "プロファイル内の実験的設定を上書き",
-    ),
-    "overrideInvalidTip": MessageLookupByLibrary.simpleMessage(
-      "スクリプトモードでは無効です",
     ),
     "overrideNtp": MessageLookupByLibrary.simpleMessage("NTPオーバーライド"),
     "overrideNtpDesc": MessageLookupByLibrary.simpleMessage(
@@ -945,6 +944,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "ruleTarget": MessageLookupByLibrary.simpleMessage("ルールターゲット"),
     "rulesCount": MessageLookupByLibrary.simpleMessage("ルーティング規則"),
     "runTime": MessageLookupByLibrary.simpleMessage("稼働時間"),
+    "runningMode": MessageLookupByLibrary.simpleMessage("実行モード"),
     "runtimeConfig": MessageLookupByLibrary.simpleMessage("ランタイム設定"),
     "save": MessageLookupByLibrary.simpleMessage("保存"),
     "saveChanges": MessageLookupByLibrary.simpleMessage("変更を保存しますか？"),

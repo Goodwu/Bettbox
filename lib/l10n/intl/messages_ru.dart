@@ -832,10 +832,10 @@ class MessageLookup extends MessageLookupByLibrary {
       "Указать политику DNS для конкретных доменов",
     ),
     "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage(
-      "Тактильная отдача",
+      "Анимация и отклик",
     ),
     "navBarHapticFeedbackDesc": MessageLookupByLibrary.simpleMessage(
-      "Вибрация при переключении нижней панели навигации",
+      "Анимация и тактильная отдача нижней панели навигации",
     ),
     "navConnections": MessageLookupByLibrary.simpleMessage("Сессии"),
     "navTools": MessageLookupByLibrary.simpleMessage("Еще"),
@@ -975,9 +975,6 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "overrideExperimentalDesc": MessageLookupByLibrary.simpleMessage(
       "Включить переопределение экспериментальных настроек в конфигурации",
-    ),
-    "overrideInvalidTip": MessageLookupByLibrary.simpleMessage(
-      "Не действует в режиме скрипта",
     ),
     "overrideNtp": MessageLookupByLibrary.simpleMessage("Переопределить NTP"),
     "overrideNtpDesc": MessageLookupByLibrary.simpleMessage(
@@ -1222,6 +1219,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "ruleTarget": MessageLookupByLibrary.simpleMessage("Цель правила"),
     "rulesCount": MessageLookupByLibrary.simpleMessage("Правила"),
     "runTime": MessageLookupByLibrary.simpleMessage("Время работы"),
+    "runningMode": MessageLookupByLibrary.simpleMessage("Режим работы"),
     "runtimeConfig": MessageLookupByLibrary.simpleMessage(
       "Рантайм-конфигурация",
     ),

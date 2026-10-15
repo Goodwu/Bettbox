@@ -594,9 +594,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "nameserverPolicyDesc": MessageLookupByLibrary.simpleMessage(
       "指定對應網域名稱伺服器策略",
     ),
-    "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage("觸覺回饋"),
+    "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage("動效回饋"),
     "navBarHapticFeedbackDesc": MessageLookupByLibrary.simpleMessage(
-      "底部導覽列切換震動回饋",
+      "底部導覽列動畫觸感回饋",
     ),
     "navConnections": MessageLookupByLibrary.simpleMessage("連線"),
     "navTools": MessageLookupByLibrary.simpleMessage("更多"),
@@ -697,7 +697,6 @@ class MessageLookup extends MessageLookupByLibrary {
     "overrideExperimentalDesc": MessageLookupByLibrary.simpleMessage(
       "開啟後將覆蓋配置中的實驗性配置",
     ),
-    "overrideInvalidTip": MessageLookupByLibrary.simpleMessage("在腳本模式下不生效"),
     "overrideNtp": MessageLookupByLibrary.simpleMessage("覆寫 NTP"),
     "overrideNtpDesc": MessageLookupByLibrary.simpleMessage(
       "開啟後將覆蓋設定中的 NTP 選項",
@@ -863,6 +862,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "ruleTarget": MessageLookupByLibrary.simpleMessage("規則目標"),
     "rulesCount": MessageLookupByLibrary.simpleMessage("路由規則"),
     "runTime": MessageLookupByLibrary.simpleMessage("啟動時間"),
+    "runningMode": MessageLookupByLibrary.simpleMessage("運行模式"),
     "runtimeConfig": MessageLookupByLibrary.simpleMessage("執行時配置"),
     "save": MessageLookupByLibrary.simpleMessage("儲存"),
     "saveChanges": MessageLookupByLibrary.simpleMessage("是否儲存更改？"),
