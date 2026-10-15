@@ -652,9 +652,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "nameserverPolicyDesc": MessageLookupByLibrary.simpleMessage(
       "특정 도메인용 DNS 정책 지정",
     ),
-    "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage("진동 피드백"),
+    "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage("모션 피드백"),
     "navBarHapticFeedbackDesc": MessageLookupByLibrary.simpleMessage(
-      "하단 탭 전환 시 진동 피드백",
+      "하단 내비게이션 바 애니메이션 및 진동 피드백",
     ),
     "navConnections": MessageLookupByLibrary.simpleMessage("연결"),
     "navTools": MessageLookupByLibrary.simpleMessage("도구"),
@@ -768,9 +768,6 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "overrideExperimentalDesc": MessageLookupByLibrary.simpleMessage(
       "프로필의 실험적 설정을 덮어씁니다",
-    ),
-    "overrideInvalidTip": MessageLookupByLibrary.simpleMessage(
-      "스크립트 모드에서는 적용되지 않습니다",
     ),
     "overrideNtp": MessageLookupByLibrary.simpleMessage("NTP 오버라이드"),
     "overrideNtpDesc": MessageLookupByLibrary.simpleMessage(
@@ -953,6 +950,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "ruleTarget": MessageLookupByLibrary.simpleMessage("규칙 목적지"),
     "rulesCount": MessageLookupByLibrary.simpleMessage("라우팅 규칙"),
     "runTime": MessageLookupByLibrary.simpleMessage("실행 시간"),
+    "runningMode": MessageLookupByLibrary.simpleMessage("실행 모드"),
     "runtimeConfig": MessageLookupByLibrary.simpleMessage("런타임 설정"),
     "save": MessageLookupByLibrary.simpleMessage("저장"),
     "saveChanges": MessageLookupByLibrary.simpleMessage("변경사항을 저장하시겠습니까?"),

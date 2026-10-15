@@ -807,10 +807,10 @@ class MessageLookup extends MessageLookupByLibrary {
       "Specify domain-specific nameservers",
     ),
     "navBarHapticFeedback": MessageLookupByLibrary.simpleMessage(
-      "Haptic Feedback",
+      "Motion Feedback",
     ),
     "navBarHapticFeedbackDesc": MessageLookupByLibrary.simpleMessage(
-      "Vibrate on navigation tab switch",
+      "Bottom navigation bar animation and haptic feedback",
     ),
     "navConnections": MessageLookupByLibrary.simpleMessage("Active"),
     "navTools": MessageLookupByLibrary.simpleMessage("More"),
@@ -944,9 +944,6 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "overrideExperimentalDesc": MessageLookupByLibrary.simpleMessage(
       "Override profile\'s Experimental settings",
-    ),
-    "overrideInvalidTip": MessageLookupByLibrary.simpleMessage(
-      "Inactive in script mode",
     ),
     "overrideNtp": MessageLookupByLibrary.simpleMessage("Override NTP"),
     "overrideNtpDesc": MessageLookupByLibrary.simpleMessage(
@@ -1181,6 +1178,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "ruleTarget": MessageLookupByLibrary.simpleMessage("Rule Target"),
     "rulesCount": MessageLookupByLibrary.simpleMessage("Rules"),
     "runTime": MessageLookupByLibrary.simpleMessage("Uptime"),
+    "runningMode": MessageLookupByLibrary.simpleMessage("Running Mode"),
     "runtimeConfig": MessageLookupByLibrary.simpleMessage("Runtime Config"),
     "save": MessageLookupByLibrary.simpleMessage("Save"),
     "saveChanges": MessageLookupByLibrary.simpleMessage("Save changes?"),
