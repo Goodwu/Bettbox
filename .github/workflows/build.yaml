@@ -48,10 +48,10 @@ jobs:
             arch: amd64
             compatible: true
           - platform: macos
-            os: macos-15
+            os: macos-26
             arch: arm64
           - platform: macos
-            os: macos-15
+            os: macos-26
             arch: amd64
           - platform: linux
             os: ubuntu-22.04
@@ -146,7 +146,7 @@ jobs:
       - name: Setup Golang
         uses: actions/setup-go@v6
         with:
-          go-version: ${{ matrix.compatible == true && '1.24.x' || '1.26.x' }}
+          go-version: ${{ matrix.compatible == true && '1.24.x' || '1.25.x' }}
           cache-dependency-path: core/go.sum
 
       - name: Select Xcode (macOS)
