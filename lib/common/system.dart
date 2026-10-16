@@ -14,6 +14,7 @@ import 'package:bett_box/widgets/input.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart';
+import 'package:restart_app/restart_app.dart';
 import 'package:synchronized/synchronized.dart';
 
 class System {
@@ -67,7 +68,13 @@ class System {
   }
 
   static Future<bool> _hasCoreCapabilities() async {
-    for (final getcap in ['getcap', '/usr/sbin/getcap', '/sbin/getcap']) {
+    for (final getcap in [
+      'getcap',
+      '/usr/sbin/getcap',
+      '/sbin/getcap',
+      '/usr/bin/getcap',
+      '/bin/getcap',
+    ]) {
       try {
         final result = await Process.run(getcap, [appPath.corePath]);
         return result.exitCode == 0 &&
@@ -230,6 +237,7 @@ class System {
     final core = _shellEscape(corePath);
     const capabilities = 'cap_net_admin,cap_net_bind_service,cap_net_raw=+ep';
     return [
+      'export PATH="/usr/sbin:/sbin:/usr/bin:/bin:\$PATH"',
       'if command -v setcap >/dev/null 2>&1; then',
       "  if output=\$(setcap '$capabilities' $core 2>&1); then",
       '    sync',
@@ -320,18 +328,21 @@ class System {
       return;
     }
     try {
-      final lines = await File('/proc/$pid/status').readAsLines();
-      String? field(String name) => lines
-          .where((line) => line.startsWith('$name:'))
-          .map((line) => line.substring(name.length + 1).trim())
-          .firstOrNull;
-      final effectiveUid = field(
-        'Uid',
-      )?.split(RegExp(r'\s+')).elementAtOrNull(1);
-      final capEff = int.tryParse(field('CapEff') ?? '', radix: 16) ?? 0;
-      const capNetAdmin = 1 << 12;
-      if (effectiveUid == '0' || capEff & capNetAdmin != 0) return;
-      commonPrint.log('Core process lacks CAP_NET_ADMIN: CapEff=$capEff');
+      for (var attempt = 0; attempt < 3; attempt++) {
+        final lines = await File('/proc/$pid/status').readAsLines();
+        String? field(String name) => lines
+            .where((line) => line.startsWith('$name:'))
+            .map((line) => line.substring(name.length + 1).trim())
+            .firstOrNull;
+        final effectiveUid = field(
+          'Uid',
+        )?.split(RegExp(r'\s+')).elementAtOrNull(1);
+        final capEff = int.tryParse(field('CapEff') ?? '', radix: 16) ?? 0;
+        const capNetAdmin = 1 << 12;
+        if (effectiveUid == '0' || capEff & capNetAdmin != 0) return;
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      commonPrint.log('Core process lacks CAP_NET_ADMIN');
       globalState.showNotifier(appLocalizations.coreCapabilityNotEffective);
     } catch (e) {
       commonPrint.log('Core privilege check skipped: $e');
@@ -438,6 +449,29 @@ class System {
   Future<void> exit() async {
     if (system.isAndroid) await SystemNavigator.pop();
     await window?.close();
+  }
+
+  Future<void> restartApp() async {
+    if (Platform.isLinux) {
+      final appImage = Platform.environment['APPIMAGE'];
+      final executable = (appImage != null && appImage.isNotEmpty)
+          ? appImage
+          : Platform.resolvedExecutable;
+      await Process.start(
+        'sh',
+        [
+          '-c',
+          'while kill -0 \$1 2>/dev/null; do sleep 0.1; done; exec "\$2"',
+          '--',
+          '$pid',
+          executable,
+        ],
+        mode: ProcessStartMode.detached,
+      );
+      await globalState.appController.handleExit();
+      return;
+    }
+    await Restart.restartApp();
   }
 
   Future<void> setProcessPriority(String processName, bool enable) async {
