@@ -64,7 +64,7 @@ class MessageLookup extends MessageLookupByLibrary {
   final messages = _notInlinedMessages(_notInlinedMessages);
   static Map<String, Function> _notInlinedMessages(_) => <String, Function>{
     "about": MessageLookupByLibrary.simpleMessage("关于"),
-    "accessControl": MessageLookupByLibrary.simpleMessage("访问控制"),
+    "accessControl": MessageLookupByLibrary.simpleMessage("分应用代理"),
     "accessControlAllowDesc": MessageLookupByLibrary.simpleMessage(
       "只允许选中的应用进入 VPN",
     ),
@@ -120,7 +120,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "analyzeLogPrompt": m0,
     "app": MessageLookupByLibrary.simpleMessage("应用"),
-    "appAccessControl": MessageLookupByLibrary.simpleMessage("应用访问控制"),
+    "appAccessControl": MessageLookupByLibrary.simpleMessage("分应用代理"),
     "appDesc": MessageLookupByLibrary.simpleMessage("处理应用相关设置"),
     "application": MessageLookupByLibrary.simpleMessage("应用程序"),
     "applicationDesc": MessageLookupByLibrary.simpleMessage("修改应用程序设置"),
