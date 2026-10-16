@@ -12,7 +12,9 @@ env:
   GRADLE_OPTS: -Dorg.gradle.vfs.watch=false
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   SENTRY_BACKEND: none
-  SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+  # Temporarily disabled SignPath due to account risk control:
+  # SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+  SIGNPATH_API_TOKEN: ''
   IPINFO_TOKEN: ${{ secrets.IPINFO_TOKEN || vars.IPINFO_TOKEN }}
   
 jobs:
@@ -199,10 +201,10 @@ jobs:
           dart setup.dart ${{ matrix.platform }} --arch ${{ matrix.arch }} ${{ env.IS_STABLE == 'true' && '--env stable' || '' }} ${{ matrix.compatible == true && '--compatible' || '' }}
 
       - name: Install SignPath (Windows)
-        if: matrix.platform == 'windows'
+        if: matrix.platform == 'windows' && env.SIGNPATH_API_TOKEN != ''
         shell: pwsh
         env:
-          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+          SIGNPATH_API_TOKEN: ${{ env.SIGNPATH_API_TOKEN }}
         run: |
           if (-not $env:SIGNPATH_API_TOKEN) {
             Write-Host "SIGNPATH_API_TOKEN is not configured. Skipping module installation."
@@ -213,7 +215,7 @@ jobs:
           Install-Module -Name SignPath -Force -Scope CurrentUser -Repository PSGallery
 
       - name: Set Signing Policy Slug (Windows)
-        if: matrix.platform == 'windows'
+        if: matrix.platform == 'windows' && env.SIGNPATH_API_TOKEN != ''
         shell: pwsh
         run: |
           $isStable = '${{ env.IS_STABLE }}' -eq 'true'
