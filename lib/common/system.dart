@@ -47,6 +47,11 @@ class System {
     };
   }
 
+  Future<void> updateDns(bool restore) async {
+    await macOS?.updateDns(restore);
+    await linux?.updateDns(restore);
+  }
+
   static String _shellEscape(String value) {
     return "'${value.replaceAll("'", "'\\''")}'";
   }
@@ -457,17 +462,13 @@ class System {
       final executable = (appImage != null && appImage.isNotEmpty)
           ? appImage
           : Platform.resolvedExecutable;
-      await Process.start(
-        'sh',
-        [
-          '-c',
-          'while kill -0 \$1 2>/dev/null; do sleep 0.1; done; exec "\$2"',
-          '--',
-          '$pid',
-          executable,
-        ],
-        mode: ProcessStartMode.detached,
-      );
+      await Process.start('sh', [
+        '-c',
+        'while kill -0 \$1 2>/dev/null; do sleep 0.1; done; exec "\$2"',
+        '--',
+        '$pid',
+        executable,
+      ], mode: ProcessStartMode.detached);
       await globalState.appController.handleExit();
       return;
     }
@@ -983,3 +984,115 @@ class MacOS {
 }
 
 final macOS = system.isMacOS ? MacOS() : null;
+
+class Linux {
+  static Linux? _instance;
+  static const _dnsBackupFileName = 'linux_system_dns_backup.json';
+  static const _hijackDns = '223.5.5.5';
+  final Lock _dnsLock = Lock();
+
+  Linux._internal();
+
+  factory Linux() => _instance ??= Linux._internal();
+
+  Future<void> updateDns(bool restore) {
+    return _dnsLock.synchronized(() async {
+      await _restoreDns();
+      if (!restore) await _setDns();
+    });
+  }
+
+  Future<ProcessResult?> _run(String executable, List<String> arguments) async {
+    try {
+      return await Process.run(executable, arguments);
+    } on ProcessException catch (e) {
+      commonPrint.warn('Failed to run $executable: ${e.message}');
+      return null;
+    }
+  }
+
+  Future<String?> get _defaultDevice async {
+    final result = await _run('ip', ['route', 'show', 'default']);
+    if (result == null || result.exitCode != 0) return null;
+    return RegExp(
+      r'\bdev\s+(\S+)',
+    ).firstMatch(result.stdout.toString())?.group(1);
+  }
+
+  Future<bool> get _usesResolvedStub async {
+    try {
+      final content = await File('/etc/resolv.conf').readAsString();
+      return RegExp(
+        r'^\s*nameserver\s+127\.0\.0\.53\b',
+        multiLine: true,
+      ).hasMatch(content);
+    } catch (e) {
+      commonPrint.warn('Failed to read /etc/resolv.conf: $e');
+      return false;
+    }
+  }
+
+  Future<void> _setDns() async {
+    if (await _usesResolvedStub) return;
+    final device = await _defaultDevice;
+    if (device == null) return;
+    try {
+      final backupFile = await _dnsBackupFile;
+      await backupFile.parent.create(recursive: true);
+      final temporaryFile = File('${backupFile.path}.tmp');
+      await temporaryFile.writeAsString(
+        jsonEncode({'device': device}),
+        flush: true,
+      );
+      await temporaryFile.rename(backupFile.path);
+    } catch (e) {
+      commonPrint.warn('Failed to persist the Linux system DNS device: $e');
+      return;
+    }
+    final result = await _run('nmcli', [
+      'device',
+      'modify',
+      device,
+      'ipv4.dns',
+      _hijackDns,
+    ]);
+    if (result == null || result.exitCode != 0) {
+      commonPrint.warn(
+        'Failed to set Linux system DNS: ${result?.stderr.toString().trim()}',
+      );
+      await _deleteBackup();
+    }
+  }
+
+  Future<void> _restoreDns() async {
+    final backupFile = await _dnsBackupFile;
+    if (!await backupFile.exists()) return;
+    try {
+      final backup = jsonDecode(await backupFile.readAsString());
+      final device = backup is Map ? backup['device'] : null;
+      if (device is String && device.isNotEmpty) {
+        final result = await _run('nmcli', ['device', 'reapply', device]);
+        if (result != null && result.exitCode != 0) {
+          commonPrint.warn(
+            'Failed to restore Linux system DNS: '
+            '${result.stderr.toString().trim()}',
+          );
+        }
+      }
+    } catch (e) {
+      commonPrint.warn('Failed to read Linux system DNS backup: $e');
+    }
+    await _deleteBackup();
+  }
+
+  Future<void> _deleteBackup() async {
+    final backupFile = await _dnsBackupFile;
+    if (await backupFile.exists()) await backupFile.delete();
+  }
+
+  Future<File> get _dnsBackupFile async {
+    return File(join(await appPath.homeDirPath, _dnsBackupFileName));
+  }
+}
+
+final linux = system.isLinux ? Linux() : null;

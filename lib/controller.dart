@@ -1126,12 +1126,10 @@ class AppController {
     } catch (e) {
       commonPrint.warn('handleExit error: $e');
     } finally {
-      if (macOS != null) {
-        try {
-          await macOS!.updateDns(true);
-        } catch (e) {
-          commonPrint.warn('Failed to restore macOS system DNS on exit: $e');
-        }
+      try {
+        await system.updateDns(true);
+      } catch (e) {
+        commonPrint.warn('Failed to restore system DNS on exit: $e');
       }
       if (!exitLock.isCompleted) {
         exitLock.complete();
@@ -1410,8 +1408,8 @@ class AppController {
         }
       }
     }
-    if (system.isMacOS && !globalState.isStart) {
-      await macOS?.updateDns(true);
+    if (!globalState.isStart) {
+      await system.updateDns(true);
     }
     final hasProfile = _ref.read(currentProfileProvider) != null;
     final shouldStart =
