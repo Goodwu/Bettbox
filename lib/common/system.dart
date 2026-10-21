@@ -47,6 +47,21 @@ class System {
     };
   }
 
+  Future<String> get deviceName async {
+    try {
+      if (isAndroid) {
+        final info = await DeviceInfoPlugin().androidInfo;
+        return info.model.isNotEmpty ? info.model : info.device;
+      }
+      final host = Platform.localHostname;
+      return host.endsWith('.local')
+          ? host.substring(0, host.length - '.local'.length)
+          : host;
+    } catch (_) {
+      return '';
+    }
+  }
+
   Future<void> updateDns(bool restore) async {
     await macOS?.updateDns(restore);
     await linux?.updateDns(restore);
@@ -91,7 +106,9 @@ class System {
 
   Future<bool> checkIsAdmin() async {
     if (system.isWindows) {
-      if (kDebugMode) return windows?.isUserAnAdmin ?? false;
+      if (!(windows?.usesHelper ?? false)) {
+        return windows?.isUserAnAdmin ?? false;
+      }
       final result = await windows?.checkService();
       return result == WindowsHelperServiceStatus.running;
     }
@@ -119,7 +136,7 @@ class System {
     if (await checkIsAdmin()) return AuthorizeCode.none;
 
     if (system.isWindows) {
-      if (kDebugMode) return AuthorizeCode.error;
+      if (!(windows?.usesHelper ?? false)) return AuthorizeCode.error;
       if (await windows?.isHelperHealthy() ?? false) return AuthorizeCode.none;
       final result = await windows?.registerService();
       return result == true ? AuthorizeCode.success : AuthorizeCode.error;
@@ -456,6 +473,14 @@ class System {
     await window?.close();
   }
 
+  Future<void> restartAsAdmin() async {
+    final executable = Platform.resolvedExecutable.replaceAll("'", "''");
+    final command =
+        '-NoProfile -WindowStyle Hidden -Command "Wait-Process -Id $pid -ErrorAction SilentlyContinue; Start-Process -FilePath \'$executable\'"';
+    if (!(windows?.runas('powershell.exe', command) ?? false)) return;
+    await globalState.appController.handleExit();
+  }
+
   Future<void> restartApp() async {
     if (Platform.isLinux) {
       final appImage = Platform.environment['APPIMAGE'];
@@ -579,6 +604,8 @@ class Windows {
     }
   }
 
+  bool get usesHelper => !kDebugMode && !appPath.isPortable;
+
   bool get isUserAnAdmin {
     final isUserAnAdmin = _shell32
         .lookupFunction<Int32 Function(), int Function()>('IsUserAnAdmin');
@@ -683,7 +710,7 @@ class Windows {
 
     final command = [
       '/c',
-      'sc',
+      'net',
       'stop',
       appHelperService,
       '>nul',
