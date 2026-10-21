@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"core/state"
+	"core/toolbox"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -54,6 +55,20 @@ var (
 	logHistory          []logEntry
 	isStreamingLogs     atomic.Bool
 )
+
+func init() {
+	toolbox.Setup(toolbox.Host{
+		Notify: func(kind string, data any) {
+			sendMessage(Message{Type: MessageType(kind), Data: data})
+		},
+		State: func() (bool, *config.Config, *config.RawConfig) {
+			runLock.Lock()
+			defer runLock.Unlock()
+			return isRunning, currentConfig, currentRawConfig
+		},
+		AgeLock: &ageMutex,
+	})
+}
 
 func handleInitClash(paramsString string) bool {
 	var params = InitParams{}
@@ -383,22 +398,7 @@ func handleAsyncTestDelay(paramsString string, fn func(string)) {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Millisecond*time.Duration(params.Timeout))
 		defer cancel()
 
-		var proxy constant.Proxy
-		var exist bool
-		if proxy, exist = tunnel.Proxies()[params.ProxyName]; !exist {
-			for _, provider := range tunnel.Providers() {
-				for _, p := range provider.Proxies() {
-					if p.Name() == params.ProxyName {
-						proxy = p
-						exist = true
-						break
-					}
-				}
-				if exist {
-					break
-				}
-			}
-		}
+		proxy, _ := toolbox.FindProxy(params.ProxyName)
 
 		delayData := &Delay{
 			Name: params.ProxyName,
@@ -1217,6 +1217,7 @@ func init() {
 	}
 	statistic.DefaultRequestNotify = func(c statistic.Tracker) {
 		info := c.Info()
+		toolbox.ObserveSpeedTestTracker(info)
 		recordRequestHistory(info)
 		if !isStreamingRequests.Load() {
 			return
@@ -1234,7 +1235,7 @@ func init() {
 	}
 }
 
-const maxRequestHistory = 256
+const maxRequestHistory = 512
 
 func recordRequestHistory(info *statistic.TrackerInfo) {
 	requestHistoryLock.Lock()
