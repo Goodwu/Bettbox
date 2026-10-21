@@ -85,6 +85,15 @@ var ruleActionsWithParams = map[string]bool{
 	"IP-CIDR6": true, "IP-SUFFIX": true, "RULE-SET": true,
 }
 
+func isRuleActionWithParams(action string) bool {
+	switch action {
+	case "GEOIP", "IP-ASN", "SRC-IP-ASN", "IP-CIDR", "IP-CIDR6", "IP-SUFFIX", "RULE-SET":
+		return true
+	default:
+		return ruleActionsWithParams[action]
+	}
+}
+
 func hasPatchValue(data json.RawMessage) bool {
 	return len(data) > 0 && string(data) != "null"
 }
@@ -145,21 +154,33 @@ func applyPatch(raw *config.RawConfig, params *PatchParams) (string, error) {
 	patchProxyGroups(raw, params)
 
 	rules := raw.Rule
-	if params.OverrideRules != nil {
-		if params.OverrideRules.Override {
-			rules = append([]string{}, params.OverrideRules.Rules...)
+	hasOverride := params.OverrideRules != nil
+	hasPrepend := len(params.PrependRules) > 0
+	if hasOverride || hasPrepend {
+		if hasOverride && params.OverrideRules.Override {
+			total := len(params.PrependRules) + len(params.OverrideRules.Rules)
+			merged := make([]string, 0, total)
+			merged = append(merged, params.PrependRules...)
+			merged = append(merged, params.OverrideRules.Rules...)
+			rules = merged
 		} else {
-			rules = append(append([]string{}, params.OverrideRules.Rules...), rules...)
+			var overrideSlice []string
+			if hasOverride {
+				overrideSlice = params.OverrideRules.Rules
+			}
+			total := len(params.PrependRules) + len(overrideSlice) + len(rules)
+			merged := make([]string, 0, total)
+			merged = append(merged, params.PrependRules...)
+			merged = append(merged, overrideSlice...)
+			merged = append(merged, rules...)
+			rules = merged
 		}
-	}
-	if len(params.PrependRules) > 0 {
-		rules = append(append([]string{}, params.PrependRules...), rules...)
 	}
 
 	patchProxies(raw)
 
 	if len(params.DisabledGroups) > 0 {
-		disabled := make(map[string]bool, len(params.DisabledGroups))
+		disabled := make(map[string]bool, len(params.DisabledGroups)*2)
 		for _, name := range params.DisabledGroups {
 			disabled[name] = true
 		}
@@ -185,6 +206,10 @@ func applyPatch(raw *config.RawConfig, params *PatchParams) (string, error) {
 }
 
 func patchProviderPaths(providers map[string]map[string]any, base string, kind string) {
+	if len(providers) == 0 {
+		return
+	}
+	dir := filepath.Join(base, kind)
 	for _, provider := range providers {
 		if provider["type"] != "http" {
 			continue
@@ -194,13 +219,13 @@ func patchProviderPaths(providers map[string]map[string]any, base string, kind s
 			continue
 		}
 		sum := md5.Sum([]byte(url))
-		provider["path"] = filepath.Join(base, kind, hex.EncodeToString(sum[:]))
+		provider["path"] = filepath.Join(dir, hex.EncodeToString(sum[:]))
 	}
 }
 
 func patchHosts(raw *config.RawConfig, hosts []PatchHost) []string {
 	if raw.Hosts == nil {
-		raw.Hosts = map[string]any{}
+		raw.Hosts = make(map[string]any, len(hosts))
 	}
 	order := make([]string, 0, len(raw.Hosts)+len(hosts))
 	for key := range raw.Hosts {
@@ -227,7 +252,10 @@ func patchDns(raw *config.RawConfig, params *PatchParams, defaults *config.RawCo
 			}
 		}
 		if !enabled {
-			dns.NameServer = append(append([]string{}, dns.NameServer...), "system://")
+			ns := make([]string, len(dns.NameServer)+1)
+			copy(ns, dns.NameServer)
+			ns[len(dns.NameServer)] = "system://"
+			dns.NameServer = ns
 		}
 		raw.DNS = dns
 		if params.DnsNodeOverride {
@@ -257,18 +285,74 @@ func patchDns(raw *config.RawConfig, params *PatchParams, defaults *config.RawCo
 	return nil
 }
 
+type domainMatcher struct {
+	domains      []string
+	exactSet     map[string]struct{}
+	dotSuffixSet map[string]struct{}
+}
+
+func newDomainMatcher(domains []string) domainMatcher {
+	exactSet := make(map[string]struct{}, len(domains))
+	dotSuffixSet := make(map[string]struct{}, len(domains)*2)
+	for _, d := range domains {
+		exactSet[d] = struct{}{}
+		for i := 0; i < len(d); i++ {
+			if d[i] == '.' {
+				dotSuffixSet[d[i+1:]] = struct{}{}
+			}
+		}
+	}
+	return domainMatcher{
+		domains:      domains,
+		exactSet:     exactSet,
+		dotSuffixSet: dotSuffixSet,
+	}
+}
+
+func (m *domainMatcher) match(pattern string) bool {
+	if len(m.domains) == 0 {
+		return false
+	}
+	pattern = strings.ToLower(pattern)
+	if strings.HasPrefix(pattern, "+.") {
+		suffix := pattern[2:]
+		if _, ok := m.exactSet[suffix]; ok {
+			return true
+		}
+		_, ok := m.dotSuffixSet[suffix]
+		return ok
+	}
+	if strings.HasPrefix(pattern, ".") {
+		suffix := pattern[1:]
+		_, ok := m.dotSuffixSet[suffix]
+		return ok
+	}
+	if strings.IndexByte(pattern, '*') == -1 {
+		_, ok := m.exactSet[pattern]
+		return ok
+	}
+	patternParts := strings.Split(pattern, ".")
+	for _, domain := range m.domains {
+		if matchWildcardParts(patternParts, domain) {
+			return true
+		}
+	}
+	return false
+}
+
 func applyDnsNodeOverride(raw *config.RawConfig, original *config.RawDNS, hostOrder []string) {
 	proxyServerNameservers := original.ProxyServerNameserver
 	listen := original.Listen
+	lowerListen := strings.ToLower(listen)
 	rewriteByHosts := false
 	if len(proxyServerNameservers) == 1 && listen != "" {
 		nameserver := strings.ToLower(proxyServerNameservers[0])
-		rewriteByHosts = strings.Contains(nameserver, strings.ToLower(listen)) ||
+		rewriteByHosts = strings.Contains(nameserver, lowerListen) ||
 			(strings.Contains(listen, "0.0.0.0") && strings.Contains(nameserver, "127.0.0.1"))
 	}
 
-	seenDomains := map[string]bool{}
-	var proxyDomains []string
+	seenDomains := make(map[string]bool, len(raw.Proxy))
+	proxyDomains := make([]string, 0, len(raw.Proxy))
 	collectServers := func() {
 		for _, proxy := range raw.Proxy {
 			server, ok := proxy["server"].(string)
@@ -288,13 +372,12 @@ func applyDnsNodeOverride(raw *config.RawConfig, original *config.RawDNS, hostOr
 		collectServers()
 	}
 
-	commonDns := commonDnsList
-	if rewriteByHosts {
-		commonDns = append(append([]string{}, commonDnsList...), strings.ToLower(listen))
-	}
 	isCommonDns := func(dns string) bool {
 		dns = strings.ToLower(dns)
-		for _, item := range commonDns {
+		if rewriteByHosts && strings.Contains(dns, lowerListen) {
+			return true
+		}
+		for _, item := range commonDnsList {
 			if strings.Contains(dns, item) {
 				return true
 			}
@@ -302,54 +385,81 @@ func applyDnsNodeOverride(raw *config.RawConfig, original *config.RawDNS, hostOr
 		return false
 	}
 
-	seenDns := map[string]bool{}
-	var privateDns []string
-	candidates := append([]string{}, original.NameServer...)
+	candCap := len(original.NameServer)
 	if !rewriteByHosts {
-		candidates = append(candidates, proxyServerNameservers...)
+		candCap += len(proxyServerNameservers)
 	}
-	for _, dns := range candidates {
-		stripped := stripDnsSuffix(dns)
-		if stripped == "" || isCommonDns(stripped) || seenDns[stripped] {
-			continue
+	seenDns := make(map[string]bool, candCap)
+	var privateDns []string
+	collectPrivateDns := func(list []string) {
+		for _, dns := range list {
+			stripped := stripDnsSuffix(dns)
+			if stripped == "" || seenDns[stripped] || isCommonDns(stripped) {
+				continue
+			}
+			seenDns[stripped] = true
+			privateDns = append(privateDns, stripped)
 		}
-		seenDns[stripped] = true
-		privateDns = append(privateDns, stripped)
+	}
+	collectPrivateDns(original.NameServer)
+	if !rewriteByHosts {
+		collectPrivateDns(proxyServerNameservers)
 	}
 
-	originalPolicy := orderedmap.New[string, any]()
-	for _, policy := range []*orderedmap.OrderedMap[string, any]{original.NameServerPolicy, original.ProxyServerNameserverPolicy} {
-		if policy == nil {
-			continue
+	matcher := newDomainMatcher(proxyDomains)
+
+	var originalPolicy *orderedmap.OrderedMap[string, any]
+	switch {
+	case original.NameServerPolicy == nil || original.NameServerPolicy.Len() == 0:
+		originalPolicy = original.ProxyServerNameserverPolicy
+	case original.ProxyServerNameserverPolicy == nil || original.ProxyServerNameserverPolicy.Len() == 0:
+		originalPolicy = original.NameServerPolicy
+	default:
+		originalPolicy = orderedmap.New[string, any]()
+		for pair := original.NameServerPolicy.Oldest(); pair != nil; pair = pair.Next() {
+			originalPolicy.Set(pair.Key, pair.Value)
 		}
-		for pair := policy.Oldest(); pair != nil; pair = pair.Next() {
+		for pair := original.ProxyServerNameserverPolicy.Oldest(); pair != nil; pair = pair.Next() {
 			originalPolicy.Set(pair.Key, pair.Value)
 		}
 	}
+
 	proxyServerPolicy := orderedmap.New[string, any]()
-	for pair := originalPolicy.Oldest(); pair != nil; pair = pair.Next() {
-		if !matchDomainPattern(pair.Key, proxyDomains) {
-			continue
-		}
-		if list, ok := pair.Value.([]any); ok {
-			stripped := make([]any, 0, len(list))
-			for _, item := range list {
-				if value := stripDnsSuffix(fmt.Sprint(item)); value != "" {
-					stripped = append(stripped, value)
-				}
-			}
-			if len(stripped) == 0 {
+	if originalPolicy != nil {
+		for pair := originalPolicy.Oldest(); pair != nil; pair = pair.Next() {
+			if !matcher.match(pair.Key) {
 				continue
 			}
-			proxyServerPolicy.Set(pair.Key, stripped)
-			continue
+			if list, ok := pair.Value.([]any); ok {
+				stripped := make([]any, 0, len(list))
+				for _, item := range list {
+					var text string
+					if s, ok := item.(string); ok {
+						text = s
+					} else {
+						text = fmt.Sprint(item)
+					}
+					if value := stripDnsSuffix(text); value != "" {
+						stripped = append(stripped, value)
+					}
+				}
+				if len(stripped) == 0 {
+					continue
+				}
+				proxyServerPolicy.Set(pair.Key, stripped)
+				continue
+			}
+			if s, ok := pair.Value.(string); ok {
+				proxyServerPolicy.Set(pair.Key, stripDnsSuffix(s))
+			} else {
+				proxyServerPolicy.Set(pair.Key, stripDnsSuffix(fmt.Sprint(pair.Value)))
+			}
 		}
-		proxyServerPolicy.Set(pair.Key, stripDnsSuffix(fmt.Sprint(pair.Value)))
 	}
 
 	var proxyFakeIpFilter []string
 	for _, pattern := range original.FakeIPFilter {
-		if matchDomainPattern(pattern, proxyDomains) {
+		if matcher.match(pattern) {
 			proxyFakeIpFilter = append(proxyFakeIpFilter, pattern)
 		}
 	}
@@ -361,7 +471,10 @@ func applyDnsNodeOverride(raw *config.RawConfig, original *config.RawDNS, hostOr
 		raw.DNS.ProxyServerNameserverPolicy = proxyServerPolicy
 	}
 	if len(proxyFakeIpFilter) > 0 {
-		raw.DNS.FakeIPFilter = append(append([]string{}, raw.DNS.FakeIPFilter...), proxyFakeIpFilter...)
+		merged := make([]string, len(raw.DNS.FakeIPFilter)+len(proxyFakeIpFilter))
+		copy(merged, raw.DNS.FakeIPFilter)
+		copy(merged[len(raw.DNS.FakeIPFilter):], proxyFakeIpFilter)
+		raw.DNS.FakeIPFilter = merged
 	}
 	if rewriteByHosts || len(privateDns) > 0 || proxyServerPolicy.Len() > 0 || len(proxyFakeIpFilter) > 0 {
 		log.Infoln("[APP] dns override: private dns %v, node policies %d, fake-ip filters %d, nodes rewritten by hosts: %t", privateDns, proxyServerPolicy.Len(), len(proxyFakeIpFilter), rewriteByHosts)
@@ -375,18 +488,48 @@ func hostSpecificity(pattern string) int {
 	if strings.HasPrefix(pattern, ".") {
 		return 1
 	}
-	if strings.Contains(pattern, "*") {
+	if strings.IndexByte(pattern, '*') != -1 {
 		return 0
 	}
 	return 3
 }
 
+func hasDotSuffix(domain, suffix string) bool {
+	return len(domain) > len(suffix) &&
+		domain[len(domain)-len(suffix)-1] == '.' &&
+		domain[len(domain)-len(suffix):] == suffix
+}
+
+func matchWildcardParts(patternParts []string, domain string) bool {
+	start := 0
+	for i, part := range patternParts {
+		end := strings.IndexByte(domain[start:], '.')
+		if i == len(patternParts)-1 {
+			if end != -1 {
+				return false
+			}
+			return part == "*" || part == domain[start:]
+		}
+		if end == -1 {
+			return false
+		}
+		if part != "*" && part != domain[start:start+end] {
+			return false
+		}
+		start += end + 1
+	}
+	return true
+}
+
 func matchDomainPattern(pattern string, domains []string) bool {
+	if len(domains) == 0 {
+		return false
+	}
 	pattern = strings.ToLower(pattern)
 	if strings.HasPrefix(pattern, "+.") {
 		suffix := pattern[2:]
 		for _, domain := range domains {
-			if domain == suffix || strings.HasSuffix(domain, "."+suffix) {
+			if domain == suffix || hasDotSuffix(domain, suffix) {
 				return true
 			}
 		}
@@ -395,13 +538,13 @@ func matchDomainPattern(pattern string, domains []string) bool {
 	if strings.HasPrefix(pattern, ".") {
 		suffix := pattern[1:]
 		for _, domain := range domains {
-			if domain != suffix && strings.HasSuffix(domain, "."+suffix) {
+			if hasDotSuffix(domain, suffix) {
 				return true
 			}
 		}
 		return false
 	}
-	if !strings.Contains(pattern, "*") {
+	if strings.IndexByte(pattern, '*') == -1 {
 		for _, domain := range domains {
 			if domain == pattern {
 				return true
@@ -411,18 +554,7 @@ func matchDomainPattern(pattern string, domains []string) bool {
 	}
 	patternParts := strings.Split(pattern, ".")
 	for _, domain := range domains {
-		domainParts := strings.Split(domain, ".")
-		if len(patternParts) != len(domainParts) {
-			continue
-		}
-		matched := true
-		for i, part := range patternParts {
-			if part != "*" && part != domainParts[i] {
-				matched = false
-				break
-			}
-		}
-		if matched {
+		if matchWildcardParts(patternParts, domain) {
 			return true
 		}
 	}
@@ -430,7 +562,7 @@ func matchDomainPattern(pattern string, domains []string) bool {
 }
 
 func stripDnsSuffix(dns string) string {
-	index := strings.Index(dns, "#")
+	index := strings.IndexByte(dns, '#')
 	if index == -1 {
 		return dns
 	}
@@ -457,12 +589,33 @@ func hostTarget(value any) string {
 	return text
 }
 
-func applyHostsToProxies(proxies []map[string]any, hosts map[string]any, hostOrder []string) {
-	type hostEntry struct {
-		pattern string
-		target  string
+type compiledHostEntry struct {
+	specificity int
+	suffix      string
+	parts       []string
+	target      string
+}
+
+func (e *compiledHostEntry) matchSingle(domain string) bool {
+	switch e.specificity {
+	case 2:
+		return domain == e.suffix || hasDotSuffix(domain, e.suffix)
+	case 1:
+		return hasDotSuffix(domain, e.suffix)
+	case 0:
+		return matchWildcardParts(e.parts, domain)
+	default:
+		return domain == e.suffix
 	}
-	entries := make([]hostEntry, 0, len(hostOrder))
+}
+
+func applyHostsToProxies(proxies []map[string]any, hosts map[string]any, hostOrder []string) {
+	if len(proxies) == 0 || len(hostOrder) == 0 {
+		return
+	}
+	var exactHosts map[string]string
+	var wildcardEntries []compiledHostEntry
+
 	for _, key := range hostOrder {
 		value := hosts[key]
 		if list, ok := value.([]any); ok {
@@ -472,30 +625,64 @@ func applyHostsToProxies(proxies []map[string]any, hosts map[string]any, hostOrd
 		} else if text, ok := value.(string); !ok || text == "" {
 			continue
 		}
-		entries = append(entries, hostEntry{pattern: key, target: hostTarget(value)})
+		target := hostTarget(value)
+		spec := hostSpecificity(key)
+		lowerKey := strings.ToLower(key)
+		if spec == 3 {
+			if exactHosts == nil {
+				exactHosts = make(map[string]string, len(hostOrder))
+			}
+			if _, exists := exactHosts[lowerKey]; !exists {
+				exactHosts[lowerKey] = target
+			}
+			continue
+		}
+		entry := compiledHostEntry{
+			specificity: spec,
+			target:      target,
+		}
+		switch spec {
+		case 2:
+			entry.suffix = lowerKey[2:]
+		case 1:
+			entry.suffix = lowerKey[1:]
+		case 0:
+			entry.parts = strings.Split(lowerKey, ".")
+		}
+		wildcardEntries = append(wildcardEntries, entry)
 	}
-	if len(entries) == 0 {
+	if len(exactHosts) == 0 && len(wildcardEntries) == 0 {
 		return
 	}
-	sort.SliceStable(entries, func(i, j int) bool {
-		return hostSpecificity(entries[i].pattern) > hostSpecificity(entries[j].pattern)
-	})
+	if len(wildcardEntries) > 1 {
+		sort.SliceStable(wildcardEntries, func(i, j int) bool {
+			return wildcardEntries[i].specificity > wildcardEntries[j].specificity
+		})
+	}
 
-	cache := map[string]string{}
+	cache := make(map[string]string, 16)
+	seen := make(map[string]bool, 8)
 	resolve := func(server string) string {
 		if cached, ok := cache[server]; ok {
 			return cached
 		}
-		seen := map[string]bool{}
+		for k := range seen {
+			delete(seen, k)
+		}
 		current := strings.ToLower(server)
 		result := server
 		for !seen[current] {
 			seen[current] = true
 			target := ""
-			for _, entry := range entries {
-				if matchDomainPattern(entry.pattern, []string{current}) {
-					target = entry.target
-					break
+			if exactHosts != nil {
+				target = exactHosts[current]
+			}
+			if target == "" {
+				for i := range wildcardEntries {
+					if wildcardEntries[i].matchSingle(current) {
+						target = wildcardEntries[i].target
+						break
+					}
 				}
 			}
 			if target == "" {
@@ -547,15 +734,23 @@ func disableGroups(groups []map[string]any, disabled map[string]bool) []map[stri
 			if !ok || len(proxies) == 0 {
 				continue
 			}
-			kept := make([]any, 0, len(proxies))
-			for _, proxy := range proxies {
+			firstDisabled := -1
+			for i, proxy := range proxies {
+				if value, ok := proxy.(string); ok && disabled[value] {
+					firstDisabled = i
+					break
+				}
+			}
+			if firstDisabled == -1 {
+				continue
+			}
+			kept := make([]any, firstDisabled, len(proxies)-1)
+			copy(kept, proxies[:firstDisabled])
+			for _, proxy := range proxies[firstDisabled+1:] {
 				if value, ok := proxy.(string); ok && disabled[value] {
 					continue
 				}
 				kept = append(kept, proxy)
-			}
-			if len(kept) == len(proxies) {
-				continue
 			}
 			group["proxies"] = kept
 			if len(kept) == 0 && !hasGroupSource(group) {
@@ -573,10 +768,14 @@ func hasGroupSource(group map[string]any) bool {
 	if use, ok := group["use"].([]any); ok && len(use) > 0 {
 		return true
 	}
-	for _, key := range []string{"include-all", "include-all-proxies", "include-all-providers"} {
-		if value, ok := group[key].(bool); ok && value {
-			return true
-		}
+	if value, ok := group["include-all"].(bool); ok && value {
+		return true
+	}
+	if value, ok := group["include-all-proxies"].(bool); ok && value {
+		return true
+	}
+	if value, ok := group["include-all-providers"].(bool); ok && value {
+		return true
 	}
 	return false
 }
@@ -596,16 +795,20 @@ func patchProxyGroups(raw *config.RawConfig, params *PatchParams) {
 		if filter != "" {
 			filterRegex, _ = regexp2.Compile(filter, regexp2.ECMAScript)
 		}
-		protected := map[string]bool{}
-		for _, name := range protectedProxyNames {
-			protected[name] = true
-		}
-		for _, group := range raw.ProxyGroup {
-			if name, ok := groupName(group); ok {
+		var protected map[string]bool
+		var excluded map[string]bool
+		if filterRegex != nil {
+			protected = make(map[string]bool, len(protectedProxyNames)+len(raw.ProxyGroup))
+			for _, name := range protectedProxyNames {
 				protected[name] = true
 			}
+			for _, group := range raw.ProxyGroup {
+				if name, ok := groupName(group); ok {
+					protected[name] = true
+				}
+			}
+			excluded = make(map[string]bool, len(raw.Proxy))
 		}
-		excluded := map[string]bool{}
 		isExcluded := func(name string) bool {
 			if result, exist := excluded[name]; exist {
 				return result
@@ -624,17 +827,33 @@ func patchProxyGroups(raw *config.RawConfig, params *PatchParams) {
 				combineExcludeFilter(group, filter)
 			}
 			if proxies, ok := group["proxies"].([]any); ok && filterRegex != nil {
-				filtered := make([]any, 0, len(proxies))
-				for _, item := range proxies {
-					name, isString := item.(string)
-					if isString && !protected[name] && isExcluded(name) {
-						continue
+				firstExcluded := -1
+				for i, item := range proxies {
+					if name, isString := item.(string); isString && !protected[name] && isExcluded(name) {
+						firstExcluded = i
+						break
 					}
-					filtered = append(filtered, item)
+				}
+				var filtered []any
+				if firstExcluded == -1 {
+					filtered = proxies
+				} else {
+					filtered = make([]any, firstExcluded, len(proxies))
+					copy(filtered, proxies[:firstExcluded])
+					for _, item := range proxies[firstExcluded+1:] {
+						if name, isString := item.(string); isString && !protected[name] && isExcluded(name) {
+							continue
+						}
+						filtered = append(filtered, item)
+					}
 				}
 				useList, useIsList := use.([]any)
 				if len(filtered) == 0 && (!hasUse || (useIsList && len(useList) == 0)) {
-					filtered = append(filtered, "DIRECT")
+					if filtered == nil || cap(filtered) == 0 {
+						filtered = []any{"DIRECT"}
+					} else {
+						filtered = append(filtered[:0], "DIRECT")
+					}
 				}
 				group["proxies"] = filtered
 			}
@@ -674,11 +893,16 @@ func patchProxies(raw *config.RawConfig) {
 		}
 		proxyType := ""
 		if value, exist := proxy["type"]; exist && value != nil {
-			proxyType = strings.ToLower(fmt.Sprint(value))
+			if s, ok := value.(string); ok {
+				proxyType = s
+			} else {
+				proxyType = fmt.Sprint(value)
+			}
 		}
 		isTls := proxy["tls"] == true
-		supportFingerprint := proxyType == "trojan" || proxyType == "anytls" ||
-			((proxyType == "vmess" || proxyType == "vless") && isTls)
+		supportFingerprint := strings.EqualFold(proxyType, "trojan") ||
+			strings.EqualFold(proxyType, "anytls") ||
+			(isTls && (strings.EqualFold(proxyType, "vmess") || strings.EqualFold(proxyType, "vless")))
 		if supportFingerprint {
 			if value, exist := proxy["client-fingerprint"]; !exist || value == nil {
 				proxy["client-fingerprint"] = fingerprint
@@ -706,19 +930,31 @@ func selectGlobalTarget(groups []map[string]any, rules []string) string {
 			return name
 		}
 	}
-	names := map[string]bool{}
+	names := make(map[string]bool, len(groups))
 	for _, group := range groups {
 		value, exist := group["name"]
 		if !exist || value == nil {
 			continue
 		}
-		name := fmt.Sprint(value)
+		var name string
+		if s, ok := value.(string); ok {
+			name = s
+		} else {
+			name = fmt.Sprint(value)
+		}
 		if name != "GLOBAL" && name != "DIRECT" && name != "REJECT" {
 			names[name] = true
 		}
 	}
+	if len(names) == 0 {
+		return ""
+	}
 	for _, rule := range rules {
-		parsed := parseRule(rule)
+		trimmed := strings.TrimSpace(rule)
+		if !strings.HasPrefix(trimmed, "MATCH") {
+			continue
+		}
+		parsed := parseRule(trimmed)
 		if parsed.action == "MATCH" && parsed.hasTarget && parsed.target != "" &&
 			parsed.target != "DIRECT" && parsed.target != "REJECT" && names[parsed.target] {
 			return parsed.target
@@ -743,15 +979,15 @@ func parseRule(value string) parsedRule {
 	for {
 		if strings.HasSuffix(raw, ",no-resolve") {
 			rule.noResolve = true
-			raw = strings.TrimSpace(strings.TrimSuffix(raw, ",no-resolve"))
+			raw = strings.TrimSpace(raw[:len(raw)-len(",no-resolve")])
 		} else if strings.HasSuffix(raw, ",src") {
 			rule.src = true
-			raw = strings.TrimSpace(strings.TrimSuffix(raw, ",src"))
+			raw = strings.TrimSpace(raw[:len(raw)-len(",src")])
 		} else {
 			break
 		}
 	}
-	firstComma := strings.Index(raw, ",")
+	firstComma := strings.IndexByte(raw, ',')
 	if firstComma == -1 {
 		rule.action = raw
 		return rule
@@ -763,7 +999,7 @@ func parseRule(value string) parsedRule {
 		rule.hasTarget = true
 		return rule
 	}
-	lastComma := strings.LastIndex(rest, ",")
+	lastComma := strings.LastIndexByte(rest, ',')
 	if lastComma == -1 {
 		rule.content = rest
 		return rule
@@ -780,30 +1016,36 @@ func parseRule(value string) parsedRule {
 }
 
 func (r parsedRule) String() string {
-	parts := []string{r.action}
 	if r.action == "MATCH" {
 		if r.target != "" {
-			parts = append(parts, r.target)
+			return r.action + "," + r.target
 		}
-		return strings.Join(parts, ",")
+		return r.action
 	}
+	var parts [5]string
+	n := 1
+	parts[0] = r.action
 	if r.content != "" {
-		parts = append(parts, r.content)
+		parts[n] = r.content
+		n++
 	}
 	target := r.target
 	if r.action == "SUB-RULE" {
 		target = r.subRule
 	}
 	if target != "" {
-		parts = append(parts, target)
+		parts[n] = target
+		n++
 	}
-	if ruleActionsWithParams[r.action] {
+	if isRuleActionWithParams(r.action) {
 		if r.src {
-			parts = append(parts, "src")
+			parts[n] = "src"
+			n++
 		}
 		if r.noResolve {
-			parts = append(parts, "no-resolve")
+			parts[n] = "no-resolve"
+			n++
 		}
 	}
-	return strings.Join(parts, ",")
+	return strings.Join(parts[:n], ",")
 }
