@@ -215,9 +215,6 @@ class _ScriptsViewState extends ConsumerState<ScriptsView> {
                   isSelected: isSelected,
                   radius: 16,
                   type: CommonCardType.filled,
-                  onPressed: () {
-                    ref.read(scriptStateProvider.notifier).setId(script.id);
-                  },
                   child: Container(
                     constraints: BoxConstraints(minHeight: hasTags ? 68 : 60),
                     padding: const EdgeInsets.symmetric(

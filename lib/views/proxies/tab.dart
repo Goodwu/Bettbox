@@ -238,7 +238,10 @@ class ProxiesTabViewState extends ConsumerState<ProxiesTabView>
 
     final ProxyGroupViewKeyMap keyMap = {};
     final children = groups.map((group) {
-      final key = GlobalObjectKey<_ProxyGroupViewState>(group.name);
+      final key = _keyMap.putIfAbsent(
+        group.name,
+        () => GlobalObjectKey<_ProxyGroupViewState>(group.name),
+      );
       keyMap[group.name] = key;
       return KeepScope(
         keep: true,

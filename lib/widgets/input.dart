@@ -153,6 +153,7 @@ class _InputDialogState extends State<InputDialog> {
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController textController;
+  late bool _obscure = widget.obscureText ?? false;
   FocusNode? _focusNode;
 
   String get value => widget.value;
@@ -220,7 +221,7 @@ class _InputDialogState extends State<InputDialog> {
           children: [
             TextFormField(
               focusNode: _focusNode,
-              obscureText: widget.obscureText ?? false,
+              obscureText: _obscure,
               keyboardType:
                   widget.keyboardType ??
                   (widget.obscureText == true
@@ -238,6 +239,18 @@ class _InputDialogState extends State<InputDialog> {
                 suffixText: suffixText,
                 hintText: widget.hintText,
                 labelText: widget.labelText,
+                suffixIcon: widget.obscureText == true
+                    ? IconButton(
+                        icon: Icon(
+                          _obscure ? Icons.visibility : Icons.visibility_off,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscure = !_obscure;
+                          });
+                        },
+                      )
+                    : null,
               ),
               validator: widget.validator,
             ),
