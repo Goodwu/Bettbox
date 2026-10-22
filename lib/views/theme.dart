@@ -277,7 +277,9 @@ class _PrimaryColorItemState extends ConsumerState<_PrimaryColorItem> {
       actions: genActions([
         FilledButton(
           style: const ButtonStyle(visualDensity: VisualDensity.compact),
-          onPressed: _handleChangeSchemeVariant,
+          onPressed: primaryColor == null && globalState.corePalette != null
+              ? null
+              : _handleChangeSchemeVariant,
           child: Text(Intl.message('${schemeVariant.name}Scheme')),
         ),
         if (!isEquals)
