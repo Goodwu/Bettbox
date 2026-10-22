@@ -284,7 +284,8 @@ class _VerdictCard extends StatelessWidget {
               ),
               _Chip(
                 icon: Icons.timer_outlined,
-                text: '${result.matchTime.toStringAsFixed(1)} ms',
+                text:
+                    '${result.matchTime < 1 ? result.matchTime.clamp(0.01, 1).toStringAsFixed(2) : result.matchTime.toStringAsFixed(1)} ms',
               ),
               _Chip(
                 icon: Icons.lan_outlined,
@@ -552,7 +553,12 @@ class _RulesList extends StatelessWidget {
     final colorScheme = context.colorScheme;
     final steps = result.steps;
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+      padding: EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        24 + MediaQuery.paddingOf(context).bottom,
+      ),
       itemCount: steps.length + (result.truncated ? 1 : 0),
       itemBuilder: (context, index) {
         if (index >= steps.length) {

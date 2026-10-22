@@ -452,7 +452,8 @@ class _NetworkDetectionState extends ConsumerState<NetworkDetection> {
                       child: SizedBox(
                         height: globalState.measure.bodyMediumHeight + 2,
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
                           children: [
                             Flexible(child: ipText),
                             if (!masked && ipInfo != null) ...[

@@ -366,15 +366,12 @@ class _ExpandableBottomSheetState extends State<_ExpandableBottomSheet>
           borderRadius: BorderRadius.vertical(top: Radius.circular(28.0)),
         ),
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            header,
-            Flexible(flex: 1, child: bodyContent),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          header,
+          Flexible(flex: 1, child: bodyContent),
+        ],
       ),
     );
 

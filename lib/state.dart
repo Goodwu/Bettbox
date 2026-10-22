@@ -318,6 +318,7 @@ class GlobalState {
     }
     if (!backgroundMode.value) {
       backgroundMode.value = true;
+      windows?.setBackgroundMemoryPriority(true);
       _scheduleBackgroundCleanup();
     }
     render?.pause();
@@ -341,6 +342,7 @@ class GlobalState {
       return;
     }
     backgroundMode.value = false;
+    windows?.setBackgroundMemoryPriority(false);
     _backgroundCoreGcTimer?.cancel();
     _backgroundCoreGcTimer = null;
     _backgroundCleanupTimer?.cancel();
@@ -443,6 +445,8 @@ class GlobalState {
     await Future.delayed(const Duration(seconds: 3));
     if (!backgroundMode.value) return;
     android?.purgeMemory();
+    system.purgeMemory();
+    windows?.emptyWorkingSet();
   }
 
   Future<void> handleStart([

@@ -486,13 +486,13 @@ class TrackerInfoDetailView extends ConsumerWidget {
           onPressed: () => open(page()),
         );
     return ListItem(
-      title: Row(
-        spacing: 16,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      title: Column(
+        spacing: 12,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(appLocalizations.toolbox),
-          Flexible(
+          SizedBox(
+            width: double.infinity,
             child: Wrap(
               spacing: 8,
               runSpacing: 8,

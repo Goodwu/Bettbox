@@ -669,23 +669,18 @@ class _ServerDialogState extends State<_ServerDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = context.colorScheme;
     return CommonDialog(
       title: appLocalizations.natServer,
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
       overrideScroll: true,
       child: ListView(
         shrinkWrap: true,
         padding: EdgeInsets.zero,
         children: [
           for (final server in natPresetServers)
-            ListTile(
-              dense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 4),
-              title: Text(server),
-              trailing: server == widget.selected
-                  ? Icon(Icons.check_circle_rounded, color: colorScheme.primary)
-                  : const Icon(Icons.circle_outlined, size: 22),
+            OptionItem(
+              text: server,
+              selected: server == widget.selected,
               onTap: () => Navigator.of(context).pop(server),
             ),
           const SizedBox(height: 8),

@@ -1194,7 +1194,9 @@ class _AccessControlPanelState extends ConsumerState<AccessControlPanel> {
       builder: (_, rise) => SingleChildScrollView(
         padding: EdgeInsets.only(top: 8 + rise),
         child: Padding(
-          padding: const EdgeInsets.only(bottom: 32),
+          padding: EdgeInsets.only(
+            bottom: 32 + MediaQuery.paddingOf(context).bottom,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

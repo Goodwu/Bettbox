@@ -24,7 +24,7 @@ class Android {
             Int32 Function(Int32 param, Int32 value),
             int Function(int param, int value)
           >('mallopt');
-      mallopt(-101, 0);
+      mallopt(sdk >= 34 ? -104 : -101, 0);
     } catch (_) {}
   }
 }

@@ -473,7 +473,12 @@ class _AddDashboardWidgetModal extends StatelessWidget {
       columns: columns,
       child: DeferredPointerHandler(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            16 + MediaQuery.paddingOf(context).bottom,
+          ),
           child: Grid(
             crossAxisCount: columns,
             crossAxisSpacing: spacing,

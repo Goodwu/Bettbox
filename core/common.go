@@ -27,7 +27,6 @@ import (
 	rp "github.com/metacubex/mihomo/rules/provider"
 	"github.com/metacubex/mihomo/tunnel"
 	"os"
-	"runtime"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -510,7 +509,6 @@ func setupConfig(params *SetupParams) (string, error) {
 	patchSelectGroup(selectedMap)
 	updateListeners()
 	tryUnloadGeoData()
-	runtime.GC()
 	debug.FreeOSMemory()
 	schedulePermissionSync()
 	log.Infoln(

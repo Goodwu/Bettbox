@@ -140,28 +140,11 @@ class _DnsQueryPageState extends ConsumerState<DnsQueryPage>
 
   Future<void> _pickServer() async {
     final result = await globalState.showCommonDialog<String>(
-      child: CommonDialog(
+      child: OptionsDialog<String>(
         title: appLocalizations.dnsQueryServer,
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-        overrideScroll: true,
-        child: ListView(
-          shrinkWrap: true,
-          padding: EdgeInsets.zero,
-          children: [
-            for (final server in dnsPresetServers)
-              ListTile(
-                dense: true,
-                title: Text(server),
-                trailing: server == _serverController.text
-                    ? Icon(
-                        Icons.check_circle_rounded,
-                        color: context.colorScheme.primary,
-                      )
-                    : null,
-                onTap: () => Navigator.of(context).pop(server),
-              ),
-          ],
-        ),
+        options: dnsPresetServers,
+        value: _serverController.text.trim(),
+        textBuilder: (server) => server,
       ),
     );
     if (result == null || !mounted) return;

@@ -1211,7 +1211,12 @@ class _MediaBatchSheetState extends ConsumerState<_MediaBatchSheet> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      8,
+                      16,
+                      24 + MediaQuery.paddingOf(context).bottom,
+                    ),
                     itemCount: sorted.length,
                     itemBuilder: (context, index) {
                       final item = sorted[index];

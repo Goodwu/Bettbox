@@ -554,7 +554,12 @@ class _ScriptSettingsSheet extends ConsumerWidget {
           ? NullStatus(label: appLocalizations.nullProfileDesc)
           : ScrollEdgeRise(
               builder: (_, rise) => ListView.builder(
-                padding: EdgeInsets.fromLTRB(12, 16 + rise, 12, 16),
+                padding: EdgeInsets.fromLTRB(
+                  12,
+                  16 + rise,
+                  12,
+                  16 + MediaQuery.paddingOf(context).bottom,
+                ),
                 itemCount: profiles.length,
                 itemBuilder: (_, index) {
                   final profile = profiles[index];

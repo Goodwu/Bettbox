@@ -459,11 +459,22 @@ class _BackupVersionsDialogState extends State<BackupVersionsDialog> {
     _selectedFile = widget.files.first;
   }
 
+  String? _subtitle(webdav.File file) {
+    final sizeText = TrafficValue(value: file.size ?? 0).show;
+    final timeText = file.mTime?.lastUpdateTimeDesc ?? '';
+    final subtitle = [
+      if (sizeText.isNotEmpty) sizeText,
+      if (timeText.isNotEmpty) timeText,
+    ].join('  ·  ');
+    return subtitle.isEmpty ? null : subtitle;
+  }
+
   @override
   Widget build(BuildContext context) {
     final displayFiles = widget.files.take(10).toList();
     return CommonDialog(
       title: appLocalizations.selectBackupVersion,
+      padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(_selectedFile),
@@ -476,32 +487,13 @@ class _BackupVersionsDialogState extends State<BackupVersionsDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ...displayFiles
-                  .map<Widget>((file) {
-                    final sizeText = TrafficValue(value: file.size ?? 0).show;
-                    final timeText = file.mTime?.lastUpdateTimeDesc ?? '';
-                    final subtitle = [
-                      if (sizeText.isNotEmpty) sizeText,
-                      if (timeText.isNotEmpty) timeText,
-                    ].join('  ·  ');
-
-                    return ListItem<webdav.File>.radio(
-                      title: Text(file.name ?? ''),
-                      subtitle: subtitle.isNotEmpty ? Text(subtitle) : null,
-                      delegate: RadioDelegate<webdav.File>(
-                        value: file,
-                        groupValue: _selectedFile,
-                        onChanged: (val) {
-                          if (val != null) {
-                            setState(() {
-                              _selectedFile = val;
-                            });
-                          }
-                        },
-                      ),
-                    );
-                  })
-                  .separated(const Divider(height: 1)),
+              for (final file in displayFiles)
+                OptionItem(
+                  text: file.name ?? '',
+                  subtitle: _subtitle(file),
+                  selected: file == _selectedFile,
+                  onTap: () => setState(() => _selectedFile = file),
+                ),
             ],
           ),
         ),

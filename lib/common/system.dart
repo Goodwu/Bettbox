@@ -525,6 +525,24 @@ class System {
       throw Exception('Failed to set process priority: ${result.stderr}');
     }
   }
+
+  void purgeMemory() {
+    if (!isLinux && !isMacOS) return;
+    try {
+      final process = DynamicLibrary.process();
+      if (isLinux) {
+        process
+            .lookupFunction<Int32 Function(UintPtr pad), int Function(int pad)>(
+              'malloc_trim',
+            )(0);
+      } else {
+        process.lookupFunction<
+          UintPtr Function(Pointer<Void> zone, UintPtr goal),
+          int Function(Pointer<Void> zone, int goal)
+        >('malloc_zone_pressure_relief')(nullptr, 0);
+      }
+    } catch (_) {}
+  }
 }
 
 final system = System();
@@ -602,6 +620,59 @@ class Windows {
         calloc.free(memoryPriorityInfo);
       }
     }
+  }
+
+  void setBackgroundMemoryPriority(bool background) {
+    try {
+      final kernel32 = DynamicLibrary.open('kernel32.dll');
+      final getCurrentProcess = kernel32
+          .lookupFunction<IntPtr Function(), int Function()>(
+            'GetCurrentProcess',
+          );
+      final setProcessInformation = kernel32
+          .lookupFunction<
+            Int32 Function(
+              IntPtr hProcess,
+              Int32 processInformationClass,
+              Pointer<Void> processInformation,
+              Uint32 processInformationSize,
+            ),
+            int Function(
+              int hProcess,
+              int processInformationClass,
+              Pointer<Void> processInformation,
+              int processInformationSize,
+            )
+          >('SetProcessInformation');
+      final memoryPriorityInfo = calloc<Uint32>();
+      try {
+        memoryPriorityInfo.value = background ? 1 : 5;
+        setProcessInformation(
+          getCurrentProcess(),
+          0,
+          memoryPriorityInfo.cast<Void>(),
+          sizeOf<Uint32>(),
+        );
+      } finally {
+        calloc.free(memoryPriorityInfo);
+      }
+    } catch (_) {}
+  }
+
+  void emptyWorkingSet() {
+    try {
+      final kernel32 = DynamicLibrary.open('kernel32.dll');
+      final getCurrentProcess = kernel32
+          .lookupFunction<IntPtr Function(), int Function()>(
+            'GetCurrentProcess',
+          );
+      final emptyWorkingSet = kernel32
+          .lookupFunction<
+            Int32 Function(IntPtr hProcess),
+            int Function(int hProcess)
+          >('K32EmptyWorkingSet');
+      emptyWorkingSet(getCurrentProcess());
+    } catch (_) {}
   }
 
   bool get usesHelper => !kDebugMode && !appPath.isPortable;
