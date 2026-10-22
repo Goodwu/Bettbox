@@ -109,6 +109,8 @@ enum ProxiesSortType { none, delay, name }
 
 enum TunStack { gvisor, system, mixed, mips }
 
+enum TunDnsMode { disabled, native, hijack }
+
 enum CongestionController { cubic, reno, bbr, bbr3 }
 
 enum AccessControlMode { acceptSelected, rejectSelected }

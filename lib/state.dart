@@ -944,6 +944,7 @@ class GlobalState {
       'tun': {
         'enable': tun.enable,
         'device': tun.device,
+        if (tun.dnsMode case final dnsMode?) 'dns-mode': dnsMode.name,
         'dns-hijack': tun.dnsHijack.isEmpty ? const ['any:53'] : tun.dnsHijack,
         'stack': tun.stack.name,
         'congestion-controller': tun.congestionController.name,

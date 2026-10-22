@@ -264,6 +264,9 @@ func updateConfig(params *UpdateParams) {
 		if params.Tun.StrictRoute != nil {
 			general.Tun.StrictRoute = *params.Tun.StrictRoute
 		}
+		if params.Tun.DNSMode != nil {
+			general.Tun.DNSMode = *params.Tun.DNSMode
+		}
 		general.Tun.DNSHijack = *params.Tun.DNSHijack
 		general.Tun.Stack = *params.Tun.Stack
 		general.Tun.DisableICMPForwarding = *params.Tun.DisableICMPForwarding
