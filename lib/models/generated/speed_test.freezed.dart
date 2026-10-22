@@ -1261,9 +1261,291 @@ $SpeedTestStateCopyWith<$Res> get result {
 
 
 /// @nodoc
+mixin _$SpeedTestNode {
+
+ String get host; String get name; String get cc; String get sponsor; double get latency;
+/// Create a copy of SpeedTestNode
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SpeedTestNodeCopyWith<SpeedTestNode> get copyWith => _$SpeedTestNodeCopyWithImpl<SpeedTestNode>(this as SpeedTestNode, _$identity);
+
+  /// Serializes this SpeedTestNode to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as SpeedTestNode;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SpeedTestNode&&(identical(other.host, _this.host) || other.host == _this.host)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.cc, _this.cc) || other.cc == _this.cc)&&(identical(other.sponsor, _this.sponsor) || other.sponsor == _this.sponsor)&&(identical(other.latency, _this.latency) || other.latency == _this.latency));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as SpeedTestNode;
+  return Object.hash(runtimeType,_this.host,_this.name,_this.cc,_this.sponsor,_this.latency);
+}
+
+@override
+String toString() {
+  final _this = this as SpeedTestNode;
+  return 'SpeedTestNode(host: ${_this.host}, name: ${_this.name}, cc: ${_this.cc}, sponsor: ${_this.sponsor}, latency: ${_this.latency})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SpeedTestNodeCopyWith<$Res>  {
+  factory $SpeedTestNodeCopyWith(SpeedTestNode value, $Res Function(SpeedTestNode) _then) = _$SpeedTestNodeCopyWithImpl;
+@useResult
+$Res call({
+ String host, String name, String cc, String sponsor, double latency
+});
+
+
+
+
+}
+/// @nodoc
+class _$SpeedTestNodeCopyWithImpl<$Res>
+    implements $SpeedTestNodeCopyWith<$Res> {
+  _$SpeedTestNodeCopyWithImpl(this._self, this._then);
+
+  final SpeedTestNode _self;
+  final $Res Function(SpeedTestNode) _then;
+
+/// Create a copy of SpeedTestNode
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? host = null,Object? name = null,Object? cc = null,Object? sponsor = null,Object? latency = null,}) {
+  return _then(SpeedTestNode(
+host: null == host ? _self.host : host // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,cc: null == cc ? _self.cc : cc // ignore: cast_nullable_to_non_nullable
+as String,sponsor: null == sponsor ? _self.sponsor : sponsor // ignore: cast_nullable_to_non_nullable
+as String,latency: null == latency ? _self.latency : latency // ignore: cast_nullable_to_non_nullable
+as double,
+  ));
+}
+
+}
+
+
+/// Adds pattern-matching-related methods to [SpeedTestNode].
+extension SpeedTestNodePatterns on SpeedTestNode {
+/// A variant of `map` that fallback to returning `orElse`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeMap<TResult extends Object?>(TResult Function( _SpeedTestNode value)?  $default,{required TResult orElse(),}){
+final _that = this;
+switch (_that) {
+case _SpeedTestNode() when $default != null:
+return $default(_that);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// Callbacks receives the raw object, upcasted.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case final Subclass2 value:
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult map<TResult extends Object?>(TResult Function( _SpeedTestNode value)  $default,){
+final _that = this;
+switch (_that) {
+case _SpeedTestNode():
+return $default(_that);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `map` that fallback to returning `null`.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case final Subclass value:
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? mapOrNull<TResult extends Object?>(TResult? Function( _SpeedTestNode value)?  $default,){
+final _that = this;
+switch (_that) {
+case _SpeedTestNode() when $default != null:
+return $default(_that);case _:
+  return null;
+
+}
+}
+/// A variant of `when` that fallback to an `orElse` callback.
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return orElse();
+/// }
+/// ```
+
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String host,  String name,  String cc,  String sponsor,  double latency)?  $default,{required TResult orElse(),}) {final _that = this;
+switch (_that) {
+case _SpeedTestNode() when $default != null:
+return $default(_that.host,_that.name,_that.cc,_that.sponsor,_that.latency);case _:
+  return orElse();
+
+}
+}
+/// A `switch`-like method, using callbacks.
+///
+/// As opposed to `map`, this offers destructuring.
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case Subclass2(:final field2):
+///     return ...;
+/// }
+/// ```
+
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String host,  String name,  String cc,  String sponsor,  double latency)  $default,) {final _that = this;
+switch (_that) {
+case _SpeedTestNode():
+return $default(_that.host,_that.name,_that.cc,_that.sponsor,_that.latency);case _:
+  throw StateError('Unexpected subclass');
+
+}
+}
+/// A variant of `when` that fallback to returning `null`
+///
+/// It is equivalent to doing:
+/// ```dart
+/// switch (sealedClass) {
+///   case Subclass(:final field):
+///     return ...;
+///   case _:
+///     return null;
+/// }
+/// ```
+
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String host,  String name,  String cc,  String sponsor,  double latency)?  $default,) {final _that = this;
+switch (_that) {
+case _SpeedTestNode() when $default != null:
+return $default(_that.host,_that.name,_that.cc,_that.sponsor,_that.latency);case _:
+  return null;
+
+}
+}
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class _SpeedTestNode implements SpeedTestNode {
+  const _SpeedTestNode({this.host = '', this.name = '', this.cc = '', this.sponsor = '', this.latency = 0});
+  factory _SpeedTestNode.fromJson(Map<String, dynamic> json) => _$SpeedTestNodeFromJson(json);
+
+@override@JsonKey() final  String host;
+@override@JsonKey() final  String name;
+@override@JsonKey() final  String cc;
+@override@JsonKey() final  String sponsor;
+@override@JsonKey() final  double latency;
+
+/// Create a copy of SpeedTestNode
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SpeedTestNodeCopyWith<_SpeedTestNode> get copyWith => __$SpeedTestNodeCopyWithImpl<_SpeedTestNode>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SpeedTestNodeToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SpeedTestNode&&(identical(other.host, host) || other.host == host)&&(identical(other.name, name) || other.name == name)&&(identical(other.cc, cc) || other.cc == cc)&&(identical(other.sponsor, sponsor) || other.sponsor == sponsor)&&(identical(other.latency, latency) || other.latency == latency));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,host,name,cc,sponsor,latency);
+}
+
+@override
+String toString() {
+    return 'SpeedTestNode(host: $host, name: $name, cc: $cc, sponsor: $sponsor, latency: $latency)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SpeedTestNodeCopyWith<$Res> implements $SpeedTestNodeCopyWith<$Res> {
+  factory _$SpeedTestNodeCopyWith(_SpeedTestNode value, $Res Function(_SpeedTestNode) _then) = __$SpeedTestNodeCopyWithImpl;
+@override @useResult
+$Res call({
+ String host, String name, String cc, String sponsor, double latency
+});
+
+
+
+
+}
+/// @nodoc
+class __$SpeedTestNodeCopyWithImpl<$Res>
+    implements _$SpeedTestNodeCopyWith<$Res> {
+  __$SpeedTestNodeCopyWithImpl(this._self, this._then);
+
+  final _SpeedTestNode _self;
+  final $Res Function(_SpeedTestNode) _then;
+
+/// Create a copy of SpeedTestNode
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? host = null,Object? name = null,Object? cc = null,Object? sponsor = null,Object? latency = null,}) {
+  return _then(_SpeedTestNode(
+host: null == host ? _self.host : host // ignore: cast_nullable_to_non_nullable
+as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
+as String,cc: null == cc ? _self.cc : cc // ignore: cast_nullable_to_non_nullable
+as String,sponsor: null == sponsor ? _self.sponsor : sponsor // ignore: cast_nullable_to_non_nullable
+as String,latency: null == latency ? _self.latency : latency // ignore: cast_nullable_to_non_nullable
+as double,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$SpeedTestSettings {
 
- SpeedTestProvider get provider; SpeedTestProtocol get protocol; int get duration; bool get multiThread;@JsonKey(name: 'use-system-dns') bool get useSystemDns;
+ SpeedTestProvider get provider; SpeedTestProtocol get protocol; int get duration; bool get multiThread;@JsonKey(name: 'use-system-dns') bool get useSystemDns; SpeedTestNode? get server;
 /// Create a copy of SpeedTestSettings
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1277,20 +1559,20 @@ $SpeedTestSettingsCopyWith<SpeedTestSettings> get copyWith => _$SpeedTestSetting
 @override
 bool operator ==(Object other) {
   final _this = this as SpeedTestSettings;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SpeedTestSettings&&(identical(other.provider, _this.provider) || other.provider == _this.provider)&&(identical(other.protocol, _this.protocol) || other.protocol == _this.protocol)&&(identical(other.duration, _this.duration) || other.duration == _this.duration)&&(identical(other.multiThread, _this.multiThread) || other.multiThread == _this.multiThread)&&(identical(other.useSystemDns, _this.useSystemDns) || other.useSystemDns == _this.useSystemDns));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SpeedTestSettings&&(identical(other.provider, _this.provider) || other.provider == _this.provider)&&(identical(other.protocol, _this.protocol) || other.protocol == _this.protocol)&&(identical(other.duration, _this.duration) || other.duration == _this.duration)&&(identical(other.multiThread, _this.multiThread) || other.multiThread == _this.multiThread)&&(identical(other.useSystemDns, _this.useSystemDns) || other.useSystemDns == _this.useSystemDns)&&(identical(other.server, _this.server) || other.server == _this.server));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as SpeedTestSettings;
-  return Object.hash(runtimeType,_this.provider,_this.protocol,_this.duration,_this.multiThread,_this.useSystemDns);
+  return Object.hash(runtimeType,_this.provider,_this.protocol,_this.duration,_this.multiThread,_this.useSystemDns,_this.server);
 }
 
 @override
 String toString() {
   final _this = this as SpeedTestSettings;
-  return 'SpeedTestSettings(provider: ${_this.provider}, protocol: ${_this.protocol}, duration: ${_this.duration}, multiThread: ${_this.multiThread}, useSystemDns: ${_this.useSystemDns})';
+  return 'SpeedTestSettings(provider: ${_this.provider}, protocol: ${_this.protocol}, duration: ${_this.duration}, multiThread: ${_this.multiThread}, useSystemDns: ${_this.useSystemDns}, server: ${_this.server})';
 }
 
 
@@ -1301,11 +1583,11 @@ abstract mixin class $SpeedTestSettingsCopyWith<$Res>  {
   factory $SpeedTestSettingsCopyWith(SpeedTestSettings value, $Res Function(SpeedTestSettings) _then) = _$SpeedTestSettingsCopyWithImpl;
 @useResult
 $Res call({
- SpeedTestProvider provider, SpeedTestProtocol protocol, int duration, bool multiThread,@JsonKey(name: 'use-system-dns') bool useSystemDns
+ SpeedTestProvider provider, SpeedTestProtocol protocol, int duration, bool multiThread,@JsonKey(name: 'use-system-dns') bool useSystemDns, SpeedTestNode? server
 });
 
 
-
+$SpeedTestNodeCopyWith<$Res>? get server;
 
 }
 /// @nodoc
@@ -1318,17 +1600,30 @@ class _$SpeedTestSettingsCopyWithImpl<$Res>
 
 /// Create a copy of SpeedTestSettings
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? provider = null,Object? protocol = null,Object? duration = null,Object? multiThread = null,Object? useSystemDns = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? provider = null,Object? protocol = null,Object? duration = null,Object? multiThread = null,Object? useSystemDns = null,Object? server = freezed,}) {
   return _then(SpeedTestSettings(
 provider: null == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
 as SpeedTestProvider,protocol: null == protocol ? _self.protocol : protocol // ignore: cast_nullable_to_non_nullable
 as SpeedTestProtocol,duration: null == duration ? _self.duration : duration // ignore: cast_nullable_to_non_nullable
 as int,multiThread: null == multiThread ? _self.multiThread : multiThread // ignore: cast_nullable_to_non_nullable
 as bool,useSystemDns: null == useSystemDns ? _self.useSystemDns : useSystemDns // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,server: freezed == server ? _self.server : server // ignore: cast_nullable_to_non_nullable
+as SpeedTestNode?,
   ));
 }
+/// Create a copy of SpeedTestSettings
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SpeedTestNodeCopyWith<$Res>? get server {
+    if (_self.server == null) {
+    return null;
+  }
 
+  return $SpeedTestNodeCopyWith<$Res>(_self.server!, (value) {
+    return _then(_self.copyWith(server: value));
+  });
+}
 }
 
 
@@ -1410,10 +1705,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( SpeedTestProvider provider,  SpeedTestProtocol protocol,  int duration,  bool multiThread, @JsonKey(name: 'use-system-dns')  bool useSystemDns)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( SpeedTestProvider provider,  SpeedTestProtocol protocol,  int duration,  bool multiThread, @JsonKey(name: 'use-system-dns')  bool useSystemDns,  SpeedTestNode? server)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SpeedTestSettings() when $default != null:
-return $default(_that.provider,_that.protocol,_that.duration,_that.multiThread,_that.useSystemDns);case _:
+return $default(_that.provider,_that.protocol,_that.duration,_that.multiThread,_that.useSystemDns,_that.server);case _:
   return orElse();
 
 }
@@ -1431,10 +1726,10 @@ return $default(_that.provider,_that.protocol,_that.duration,_that.multiThread,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( SpeedTestProvider provider,  SpeedTestProtocol protocol,  int duration,  bool multiThread, @JsonKey(name: 'use-system-dns')  bool useSystemDns)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( SpeedTestProvider provider,  SpeedTestProtocol protocol,  int duration,  bool multiThread, @JsonKey(name: 'use-system-dns')  bool useSystemDns,  SpeedTestNode? server)  $default,) {final _that = this;
 switch (_that) {
 case _SpeedTestSettings():
-return $default(_that.provider,_that.protocol,_that.duration,_that.multiThread,_that.useSystemDns);case _:
+return $default(_that.provider,_that.protocol,_that.duration,_that.multiThread,_that.useSystemDns,_that.server);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -1451,10 +1746,10 @@ return $default(_that.provider,_that.protocol,_that.duration,_that.multiThread,_
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( SpeedTestProvider provider,  SpeedTestProtocol protocol,  int duration,  bool multiThread, @JsonKey(name: 'use-system-dns')  bool useSystemDns)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( SpeedTestProvider provider,  SpeedTestProtocol protocol,  int duration,  bool multiThread, @JsonKey(name: 'use-system-dns')  bool useSystemDns,  SpeedTestNode? server)?  $default,) {final _that = this;
 switch (_that) {
 case _SpeedTestSettings() when $default != null:
-return $default(_that.provider,_that.protocol,_that.duration,_that.multiThread,_that.useSystemDns);case _:
+return $default(_that.provider,_that.protocol,_that.duration,_that.multiThread,_that.useSystemDns,_that.server);case _:
   return null;
 
 }
@@ -1466,7 +1761,7 @@ return $default(_that.provider,_that.protocol,_that.duration,_that.multiThread,_
 @JsonSerializable()
 
 class _SpeedTestSettings implements SpeedTestSettings {
-  const _SpeedTestSettings({this.provider = SpeedTestProvider.apple, this.protocol = SpeedTestProtocol.http2, this.duration = 10, this.multiThread = true, @JsonKey(name: 'use-system-dns') this.useSystemDns = false});
+  const _SpeedTestSettings({this.provider = SpeedTestProvider.apple, this.protocol = SpeedTestProtocol.http2, this.duration = 10, this.multiThread = true, @JsonKey(name: 'use-system-dns') this.useSystemDns = false, this.server});
   factory _SpeedTestSettings.fromJson(Map<String, dynamic> json) => _$SpeedTestSettingsFromJson(json);
 
 @override@JsonKey() final  SpeedTestProvider provider;
@@ -1474,6 +1769,7 @@ class _SpeedTestSettings implements SpeedTestSettings {
 @override@JsonKey() final  int duration;
 @override@JsonKey() final  bool multiThread;
 @override@JsonKey(name: 'use-system-dns') final  bool useSystemDns;
+@override final  SpeedTestNode? server;
 
 /// Create a copy of SpeedTestSettings
 /// with the given fields replaced by the non-null parameter values.
@@ -1488,18 +1784,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SpeedTestSettings&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.protocol, protocol) || other.protocol == protocol)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.multiThread, multiThread) || other.multiThread == multiThread)&&(identical(other.useSystemDns, useSystemDns) || other.useSystemDns == useSystemDns));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SpeedTestSettings&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.protocol, protocol) || other.protocol == protocol)&&(identical(other.duration, duration) || other.duration == duration)&&(identical(other.multiThread, multiThread) || other.multiThread == multiThread)&&(identical(other.useSystemDns, useSystemDns) || other.useSystemDns == useSystemDns)&&(identical(other.server, server) || other.server == server));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,provider,protocol,duration,multiThread,useSystemDns);
+    return Object.hash(runtimeType,provider,protocol,duration,multiThread,useSystemDns,server);
 }
 
 @override
 String toString() {
-    return 'SpeedTestSettings(provider: $provider, protocol: $protocol, duration: $duration, multiThread: $multiThread, useSystemDns: $useSystemDns)';
+    return 'SpeedTestSettings(provider: $provider, protocol: $protocol, duration: $duration, multiThread: $multiThread, useSystemDns: $useSystemDns, server: $server)';
 }
 
 
@@ -1510,11 +1806,11 @@ abstract mixin class _$SpeedTestSettingsCopyWith<$Res> implements $SpeedTestSett
   factory _$SpeedTestSettingsCopyWith(_SpeedTestSettings value, $Res Function(_SpeedTestSettings) _then) = __$SpeedTestSettingsCopyWithImpl;
 @override @useResult
 $Res call({
- SpeedTestProvider provider, SpeedTestProtocol protocol, int duration, bool multiThread,@JsonKey(name: 'use-system-dns') bool useSystemDns
+ SpeedTestProvider provider, SpeedTestProtocol protocol, int duration, bool multiThread,@JsonKey(name: 'use-system-dns') bool useSystemDns, SpeedTestNode? server
 });
 
 
-
+@override $SpeedTestNodeCopyWith<$Res>? get server;
 
 }
 /// @nodoc
@@ -1527,18 +1823,31 @@ class __$SpeedTestSettingsCopyWithImpl<$Res>
 
 /// Create a copy of SpeedTestSettings
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? provider = null,Object? protocol = null,Object? duration = null,Object? multiThread = null,Object? useSystemDns = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? provider = null,Object? protocol = null,Object? duration = null,Object? multiThread = null,Object? useSystemDns = null,Object? server = freezed,}) {
   return _then(_SpeedTestSettings(
 provider: null == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
 as SpeedTestProvider,protocol: null == protocol ? _self.protocol : protocol // ignore: cast_nullable_to_non_nullable
 as SpeedTestProtocol,duration: null == duration ? _self.duration : duration // ignore: cast_nullable_to_non_nullable
 as int,multiThread: null == multiThread ? _self.multiThread : multiThread // ignore: cast_nullable_to_non_nullable
 as bool,useSystemDns: null == useSystemDns ? _self.useSystemDns : useSystemDns // ignore: cast_nullable_to_non_nullable
-as bool,
+as bool,server: freezed == server ? _self.server : server // ignore: cast_nullable_to_non_nullable
+as SpeedTestNode?,
   ));
 }
 
+/// Create a copy of SpeedTestSettings
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$SpeedTestNodeCopyWith<$Res>? get server {
+    if (_self.server == null) {
+    return null;
+  }
 
+  return $SpeedTestNodeCopyWith<$Res>(_self.server!, (value) {
+    return _then(_self.copyWith(server: value));
+  });
+}
 }
 
 

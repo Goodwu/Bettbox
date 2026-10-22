@@ -1593,6 +1593,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "speedTestResponsiveness": MessageLookupByLibrary.simpleMessage("応答性"),
     "speedTestRoute": MessageLookupByLibrary.simpleMessage("ルーティング"),
     "speedTestServer": MessageLookupByLibrary.simpleMessage("測定サーバー"),
+    "speedTestServerAutoDesc": MessageLookupByLibrary.simpleMessage(
+      "Speedtest サーバーを自動選択",
+    ),
     "speedTestSettings": MessageLookupByLibrary.simpleMessage("測定設定"),
     "speedTestSingleThread": MessageLookupByLibrary.simpleMessage("シングル"),
     "speedTestStart": MessageLookupByLibrary.simpleMessage("測定開始"),

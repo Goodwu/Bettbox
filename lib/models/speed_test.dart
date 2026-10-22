@@ -76,6 +76,20 @@ abstract class SpeedTestRecord with _$SpeedTestRecord {
 }
 
 @freezed
+abstract class SpeedTestNode with _$SpeedTestNode {
+  const factory SpeedTestNode({
+    @Default('') String host,
+    @Default('') String name,
+    @Default('') String cc,
+    @Default('') String sponsor,
+    @Default(0) double latency,
+  }) = _SpeedTestNode;
+
+  factory SpeedTestNode.fromJson(Map<String, Object?> json) =>
+      _$SpeedTestNodeFromJson(json);
+}
+
+@freezed
 abstract class SpeedTestSettings with _$SpeedTestSettings {
   const factory SpeedTestSettings({
     @Default(SpeedTestProvider.apple) SpeedTestProvider provider,
@@ -83,6 +97,7 @@ abstract class SpeedTestSettings with _$SpeedTestSettings {
     @Default(10) int duration,
     @Default(true) bool multiThread,
     @JsonKey(name: 'use-system-dns') @Default(false) bool useSystemDns,
+    SpeedTestNode? server,
   }) = _SpeedTestSettings;
 
   factory SpeedTestSettings.fromJson(Map<String, Object?> json) =>
@@ -122,5 +137,6 @@ extension SpeedTestSettingsExt on SpeedTestSettings {
     'protocol': protocol.value,
     'streams': multiThread ? multiThreadStreams : 1,
     'use-system-dns': useSystemDns,
+    'server': server?.toJson(),
   };
 }

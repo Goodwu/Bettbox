@@ -855,6 +855,7 @@
   "speedTestResponsiveness": "応答性",
   "speedTestDataUsed": "使用データ量",
   "speedTestServer": "測定サーバー",
+  "speedTestServerAutoDesc": "Speedtest サーバーを自動選択",
   "speedTestProtocol": "プロトコル",
   "speedTestMobileDataTip": "モバイルデータ通信中です。1 回の測定で数百 MB を消費する場合があります。続行しますか？",
   "speedTestErrorRejected": "ルールによりブロックされました",

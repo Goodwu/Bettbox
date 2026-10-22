@@ -859,6 +859,7 @@
   "speedTestResponsiveness": "響應性",
   "speedTestDataUsed": "已用流量",
   "speedTestServer": "測速伺服器",
+  "speedTestServerAutoDesc": "自動選擇 Speedtest 伺服器",
   "speedTestProtocol": "協定",
   "speedTestMobileDataTip": "目前正在使用行動數據，一次測速可能消耗數百 MB 流量，是否繼續？",
   "speedTestErrorRejected": "測速請求被規則攔截",

@@ -859,6 +859,7 @@
   "speedTestResponsiveness": "Отзывчивость",
   "speedTestDataUsed": "Трафик",
   "speedTestServer": "Сервер теста",
+  "speedTestServerAutoDesc": "Автоматически выбирать сервер Speedtest",
   "speedTestProtocol": "Протокол",
   "speedTestMobileDataTip": "Используются мобильные данные. Один тест может потратить сотни МБ. Продолжить?",
   "speedTestErrorRejected": "Заблокировано правилами",

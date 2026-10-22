@@ -89,6 +89,8 @@ mixin ClashInterface {
 
   Future<String> probeSpeedTest(String params);
 
+  Future<String> getSpeedTestServers(String params);
+
   Future<String> startStunTest(String params);
 
   FutureOr<bool> cancelStunTest();
@@ -608,6 +610,15 @@ abstract class ClashHandlerInterface with ClashInterface {
   Future<String> probeSpeedTest(String params) {
     return invoke<String>(
       method: ActionMethod.probeSpeedTest,
+      data: params,
+      timeout: const Duration(seconds: 30),
+    );
+  }
+
+  @override
+  Future<String> getSpeedTestServers(String params) {
+    return invoke<String>(
+      method: ActionMethod.getSpeedTestServers,
       data: params,
       timeout: const Duration(seconds: 30),
     );

@@ -500,6 +500,23 @@ class ClashCore {
     return _decodeSpeedTestState(value);
   }
 
+  Future<List<SpeedTestNode>> getSpeedTestServers({
+    required String proxy,
+    String search = '',
+  }) async {
+    final value = await clashInterface.getSpeedTestServers(
+      json.encode({'proxy': proxy, 'search': search}),
+    );
+    if (value.isEmpty) return const [];
+    final decoded = json.decode(value);
+    if (decoded is! List) return const [];
+    return [
+      for (final item in decoded)
+        if (item is Map)
+          SpeedTestNode.fromJson(Map<String, Object?>.from(item)),
+    ];
+  }
+
   Future<void> cancelSpeedTest() async {
     await clashInterface.cancelSpeedTest();
   }

@@ -336,7 +336,8 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
   void _updateSettings(SpeedTestSettings settings) {
     final reprobe =
         settings.provider != _settings.provider ||
-        settings.useSystemDns != _settings.useSystemDns;
+        settings.useSystemDns != _settings.useSystemDns ||
+        settings.server != _settings.server;
     setState(() {
       _settings = settings;
       _state = null;
@@ -423,7 +424,7 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
   Future<void> _openSettings() async {
     if (_testing) return;
     final result = await globalState.showCommonDialog<SpeedTestSettings>(
-      child: _SettingsDialog(settings: _settings),
+      child: _SettingsDialog(settings: _settings, proxy: _requestProxy()),
     );
     if (result == null || !mounted || result == _settings) return;
     _updateSettings(result);
@@ -537,6 +538,14 @@ class _SpeedTestPageState extends ConsumerState<SpeedTestPage>
             scale: scale,
             onStart: _start,
             onStop: clashCore.cancelSpeedTest,
+            onMultiThreadChanged: _testing || _introRunning
+                ? null
+                : (value) {
+                    _updateSettings(_settings.copyWith(multiThread: value));
+                    globalState.showNotifier(
+                      '${appLocalizations.speedTestConnections}: ${value ? appLocalizations.speedTestMultiThread : appLocalizations.speedTestSingleThread}',
+                    );
+                  },
           );
           final heroSurface = ToolSurface(
             padding: EdgeInsets.symmetric(
@@ -667,6 +676,7 @@ class _HeroPanel extends StatelessWidget {
   final double scale;
   final VoidCallback onStart;
   final VoidCallback onStop;
+  final ValueChanged<bool>? onMultiThreadChanged;
 
   const _HeroPanel({
     required this.settings,
@@ -679,6 +689,7 @@ class _HeroPanel extends StatelessWidget {
     this.scale = 1.0,
     required this.onStart,
     required this.onStop,
+    required this.onMultiThreadChanged,
   });
 
   @override
@@ -721,6 +732,8 @@ class _HeroPanel extends StatelessWidget {
                       spinner: spinner,
                       introRunning: introRunning,
                       probing: probing,
+                      multiThread: settings.multiThread,
+                      onMultiThreadChanged: onMultiThreadChanged,
                     ),
                     SizedBox(height: (10 * scale).roundToDouble()),
                     button,
@@ -755,6 +768,8 @@ class _HeroPanel extends StatelessWidget {
                 spinner: spinner,
                 introRunning: introRunning,
                 probing: probing,
+                multiThread: settings.multiThread,
+                onMultiThreadChanged: onMultiThreadChanged,
               ),
             ),
             const SizedBox(height: 8),
@@ -890,6 +905,8 @@ class _SpeedGauge extends StatelessWidget {
   final Animation<double> spinner;
   final bool introRunning;
   final bool probing;
+  final bool multiThread;
+  final ValueChanged<bool>? onMultiThreadChanged;
 
   const _SpeedGauge({
     required this.size,
@@ -898,6 +915,8 @@ class _SpeedGauge extends StatelessWidget {
     required this.spinner,
     required this.introRunning,
     required this.probing,
+    required this.multiThread,
+    required this.onMultiThreadChanged,
   });
 
   @override
@@ -932,6 +951,9 @@ class _SpeedGauge extends StatelessWidget {
           fontWeight: FontWeight.w700,
           color: colorScheme.outline.withValues(alpha: 0.75),
         );
+
+    final onMultiThreadChanged = this.onMultiThreadChanged;
+    final iconSize = size / 16;
 
     return SizedBox(
       width: size,
@@ -985,29 +1007,58 @@ class _SpeedGauge extends StatelessWidget {
                           fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 200),
-                            child: Icon(
-                              isUpload
-                                  ? Icons.arrow_circle_up_outlined
-                                  : Icons.arrow_circle_down_outlined,
-                              key: ValueKey(isUpload),
-                              size: size / 16,
-                              color: color,
+                      Material(
+                        type: MaterialType.transparency,
+                        child: InkWell(
+                          customBorder: const StadiumBorder(),
+                          onTap: onMultiThreadChanged == null
+                              ? null
+                              : () => onMultiThreadChanged(!multiThread),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                AnimatedSwitcher(
+                                  duration: const Duration(milliseconds: 200),
+                                  child: multiThread
+                                      ? CustomPaint(
+                                          key: ValueKey((isUpload, true)),
+                                          size: Size(
+                                            iconSize * 30 / 24,
+                                            iconSize,
+                                          ),
+                                          painter: _MultiArrowCapsulePainter(
+                                            color: color,
+                                            up: isUpload,
+                                          ),
+                                        )
+                                      : Icon(
+                                          isUpload
+                                              ? Icons.arrow_circle_up_outlined
+                                              : Icons
+                                                    .arrow_circle_down_outlined,
+                                          key: ValueKey((isUpload, false)),
+                                          size: iconSize,
+                                          color: color,
+                                        ),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  formatSpeedUnit(shownBps),
+                                  style: context.textTheme.titleMedium
+                                      ?.copyWith(
+                                        fontSize: size / 19,
+                                        color: colorScheme.onSurfaceVariant,
+                                      ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            formatSpeedUnit(shownBps),
-                            style: context.textTheme.titleMedium?.copyWith(
-                              fontSize: size / 19,
-                              color: colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ],
                   ),
@@ -1019,6 +1070,48 @@ class _SpeedGauge extends StatelessWidget {
       ),
     );
   }
+}
+
+class _MultiArrowCapsulePainter extends CustomPainter {
+  final Color color;
+  final bool up;
+
+  const _MultiArrowCapsulePainter({required this.color, required this.up});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final unit = size.height / 24;
+    final center = size.center(Offset.zero);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromCenter(center: center, width: unit * 28, height: unit * 18),
+        Radius.circular(unit * 9),
+      ),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = unit * 2,
+    );
+    final direction = up ? -1.0 : 1.0;
+    final arrows = Path();
+    for (final offset in const [-5.0, 5.0]) {
+      final x = center.dx + offset * unit;
+      arrows
+        ..moveTo(x - unit, center.dy - direction * unit * 4)
+        ..lineTo(x + unit, center.dy - direction * unit * 4)
+        ..lineTo(x + unit, center.dy)
+        ..lineTo(x + unit * 4, center.dy)
+        ..lineTo(x, center.dy + direction * unit * 4)
+        ..lineTo(x - unit * 4, center.dy)
+        ..lineTo(x - unit, center.dy)
+        ..close();
+    }
+    canvas.drawPath(arrows, Paint()..color = color);
+  }
+
+  @override
+  bool shouldRepaint(_MultiArrowCapsulePainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.up != up;
 }
 
 class _GaugePainter extends CustomPainter {
@@ -2001,8 +2094,9 @@ class _ThroughputPainter extends CustomPainter {
 
 class _SettingsDialog extends StatefulWidget {
   final SpeedTestSettings settings;
+  final String proxy;
 
-  const _SettingsDialog({required this.settings});
+  const _SettingsDialog({required this.settings, required this.proxy});
 
   @override
   State<_SettingsDialog> createState() => _SettingsDialogState();
@@ -2010,6 +2104,21 @@ class _SettingsDialog extends StatefulWidget {
 
 class _SettingsDialogState extends State<_SettingsDialog> {
   late SpeedTestSettings _settings = widget.settings;
+
+  Future<void> _pickServer() async {
+    final result = await globalState.showCommonDialog<SpeedTestNode>(
+      child: _SpeedTestServerPicker(
+        selected: _settings.server,
+        proxy: widget.proxy,
+      ),
+    );
+    if (result == null || !mounted) return;
+    setState(
+      () => _settings = _settings.copyWith(
+        server: result.host.isEmpty ? null : result.copyWith(latency: 0),
+      ),
+    );
+  }
 
   Widget _item({required String title, String? desc, required Widget child}) {
     return Padding(
@@ -2058,6 +2167,23 @@ class _SettingsDialogState extends State<_SettingsDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (_settings.provider == SpeedTestProvider.speedtest)
+            _item(
+              title: appLocalizations.speedTestServer,
+              child: _QuickOutboundCard(
+                title: switch (_settings.server) {
+                  final server? => _speedTestNodeTitle(server),
+                  null => appLocalizations.auto,
+                },
+                subtitle: switch (_settings.server) {
+                  final server? => _speedTestNodeSubtitle(server),
+                  null => appLocalizations.speedTestServerAutoDesc,
+                },
+                icon: Icons.dns_rounded,
+                isSelected: false,
+                onTap: _pickServer,
+              ),
+            ),
           _item(
             title: appLocalizations.speedTestDuration,
             child: ToolSegmented<int>(
@@ -2151,6 +2277,132 @@ class _SettingsDialogState extends State<_SettingsDialog> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _speedTestNodeTitle(SpeedTestNode node) => [
+  if (node.cc.length == 2) utils.countryCodeToEmoji(node.cc.toUpperCase()),
+  node.name,
+].join(' ');
+
+String _speedTestNodeSubtitle(SpeedTestNode node, {bool latency = false}) => [
+  if (node.sponsor.isNotEmpty) node.sponsor,
+  if (latency) node.latency > 0 ? '${_formatMs(node.latency)} ms' : '—',
+].join(' · ');
+
+class _SpeedTestServerPicker extends StatefulWidget {
+  final SpeedTestNode? selected;
+  final String proxy;
+
+  const _SpeedTestServerPicker({required this.selected, required this.proxy});
+
+  @override
+  State<_SpeedTestServerPicker> createState() => _SpeedTestServerPickerState();
+}
+
+class _SpeedTestServerPickerState extends State<_SpeedTestServerPicker> {
+  final _controller = TextEditingController();
+  List<SpeedTestNode> _servers = const [];
+  bool _loading = true;
+  int _serial = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load('');
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _load(String search) async {
+    final serial = ++_serial;
+    setState(() => _loading = true);
+    final servers = await clashCore.getSpeedTestServers(
+      proxy: widget.proxy,
+      search: search,
+    );
+    if (!mounted || serial != _serial) return;
+    setState(() {
+      _loading = false;
+      _servers = servers;
+    });
+  }
+
+  Widget _card(SpeedTestNode node, {bool latency = true}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: _QuickOutboundCard(
+        title: _speedTestNodeTitle(node),
+        subtitle: _speedTestNodeSubtitle(node, latency: latency),
+        icon: Icons.dns_rounded,
+        isSelected: widget.selected?.host == node.host,
+        onTap: () => Navigator.of(context).pop(node),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final selected = widget.selected;
+    final pinned =
+        selected != null && !_servers.any((item) => item.host == selected.host)
+        ? selected
+        : null;
+    return CommonDialog(
+      title: appLocalizations.speedTestServer,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      overrideScroll: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ToolSearchField(
+            controller: _controller,
+            hintText: appLocalizations.search,
+            busy: _loading,
+            onSubmitted: _load,
+          ),
+          const SizedBox(height: 12),
+          Flexible(
+            child: ListView(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _QuickOutboundCard(
+                    title: appLocalizations.auto,
+                    subtitle: appLocalizations.speedTestServerAutoDesc,
+                    icon: Icons.auto_awesome_rounded,
+                    isSelected: selected == null,
+                    onTap: () =>
+                        Navigator.of(context).pop(const SpeedTestNode()),
+                  ),
+                ),
+                if (pinned != null) _card(pinned, latency: false),
+                ToolLoadingSwitcher(
+                  loading: _loading,
+                  loadingHeight: 160,
+                  child: _servers.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          child: Center(child: Text(appLocalizations.noData)),
+                        )
+                      : Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [for (final node in _servers) _card(node)],
+                        ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -2504,6 +2756,8 @@ class _OutboundGroupCard extends ConsumerWidget {
                           children: [
                             EmojiText(
                               group.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
                                 color: colorScheme.onSurface,
@@ -2514,6 +2768,8 @@ class _OutboundGroupCard extends ConsumerWidget {
                               const SizedBox(height: 1),
                               EmojiText(
                                 activeProxyName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                                 style: textTheme.labelSmall?.copyWith(
                                   color: colorScheme.outline,
                                   fontSize: 11,
@@ -2717,6 +2973,8 @@ class _OutboundProxyCard extends StatelessWidget {
                           Flexible(
                             child: EmojiText(
                               proxy.type,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: textTheme.labelSmall?.copyWith(
                                 color: colorScheme.outline,
                                 fontSize: 10.5,
@@ -2801,7 +3059,10 @@ class _HistorySheetState extends State<_HistorySheet> {
       ],
       body: records.isEmpty
           ? Padding(
-              padding: const EdgeInsets.symmetric(vertical: 48),
+              padding: EdgeInsets.only(
+                top: 48,
+                bottom: 48 + MediaQuery.paddingOf(context).bottom,
+              ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -2822,7 +3083,12 @@ class _HistorySheetState extends State<_HistorySheet> {
             )
           : ListView.builder(
               shrinkWrap: true,
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                0,
+                16,
+                16 + MediaQuery.paddingOf(context).bottom,
+              ),
               itemCount: records.length + 1,
               itemBuilder: (context, index) {
                 if (index == 0) {

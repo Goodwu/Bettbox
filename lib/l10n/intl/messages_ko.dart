@@ -1591,6 +1591,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "speedTestResponsiveness": MessageLookupByLibrary.simpleMessage("응답성"),
     "speedTestRoute": MessageLookupByLibrary.simpleMessage("라우팅 규칙"),
     "speedTestServer": MessageLookupByLibrary.simpleMessage("측정 서버"),
+    "speedTestServerAutoDesc": MessageLookupByLibrary.simpleMessage(
+      "Speedtest 서버 자동 선택",
+    ),
     "speedTestSettings": MessageLookupByLibrary.simpleMessage("측정 설정"),
     "speedTestSingleThread": MessageLookupByLibrary.simpleMessage("단일"),
     "speedTestStart": MessageLookupByLibrary.simpleMessage("측정 시작"),

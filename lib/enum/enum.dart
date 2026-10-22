@@ -281,6 +281,7 @@ enum ActionMethod {
   startSpeedTest,
   cancelSpeedTest,
   probeSpeedTest,
+  getSpeedTestServers,
   startStunTest,
   cancelStunTest,
   routeTrace,

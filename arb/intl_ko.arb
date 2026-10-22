@@ -855,6 +855,7 @@
   "speedTestResponsiveness": "응답성",
   "speedTestDataUsed": "사용 데이터",
   "speedTestServer": "측정 서버",
+  "speedTestServerAutoDesc": "Speedtest 서버 자동 선택",
   "speedTestProtocol": "프로토콜",
   "speedTestMobileDataTip": "모바일 데이터를 사용 중입니다. 1회 측정에 수백 MB가 사용될 수 있습니다. 계속할까요?",
   "speedTestErrorRejected": "규칙에 의해 차단됨",

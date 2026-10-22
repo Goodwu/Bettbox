@@ -854,6 +854,7 @@
   "speedTestResponsiveness": "Responsiveness",
   "speedTestDataUsed": "Data Used",
   "speedTestServer": "Test Server",
+  "speedTestServerAutoDesc": "Automatically select Speedtest server",
   "speedTestProtocol": "Protocol",
   "speedTestMobileDataTip": "You are on mobile data. One test may use hundreds of MB. Continue?",
   "speedTestErrorRejected": "Blocked by rules",

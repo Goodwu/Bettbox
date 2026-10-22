@@ -361,6 +361,7 @@ const _$ActionMethodEnumMap = {
   ActionMethod.startSpeedTest: 'startSpeedTest',
   ActionMethod.cancelSpeedTest: 'cancelSpeedTest',
   ActionMethod.probeSpeedTest: 'probeSpeedTest',
+  ActionMethod.getSpeedTestServers: 'getSpeedTestServers',
   ActionMethod.startStunTest: 'startStunTest',
   ActionMethod.cancelStunTest: 'cancelStunTest',
   ActionMethod.routeTrace: 'routeTrace',

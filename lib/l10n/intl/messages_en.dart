@@ -1934,6 +1934,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "speedTestRoute": MessageLookupByLibrary.simpleMessage("Route Rule"),
     "speedTestServer": MessageLookupByLibrary.simpleMessage("Test Server"),
+    "speedTestServerAutoDesc": MessageLookupByLibrary.simpleMessage(
+      "Automatically select Speedtest server",
+    ),
     "speedTestSettings": MessageLookupByLibrary.simpleMessage(
       "Speed Test Settings",
     ),

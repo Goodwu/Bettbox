@@ -1961,6 +1961,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "speedTestResponsiveness": MessageLookupByLibrary.simpleMessage("پاسخگویی"),
     "speedTestRoute": MessageLookupByLibrary.simpleMessage("قانون مسیریابی"),
     "speedTestServer": MessageLookupByLibrary.simpleMessage("سرور تست"),
+    "speedTestServerAutoDesc": MessageLookupByLibrary.simpleMessage(
+      "انتخاب خودکار سرور Speedtest",
+    ),
     "speedTestSettings": MessageLookupByLibrary.simpleMessage("تنظیمات تست"),
     "speedTestSingleThread": MessageLookupByLibrary.simpleMessage("تک‌رشته"),
     "speedTestStart": MessageLookupByLibrary.simpleMessage("شروع تست"),

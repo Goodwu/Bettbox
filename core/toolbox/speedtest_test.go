@@ -6,6 +6,7 @@ import (
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/x509"
+	"encoding/json"
 	"fmt"
 	"io"
 	"math/big"
@@ -358,6 +359,76 @@ func TestPrepareSpeedtestNetReportsBlockedWhenNoServerResponds(t *testing.T) {
 	t.Cleanup(tester.release)
 	if _, err := tester.prepare(context.Background(), tester); err != errSpeedTestBlocked {
 		t.Fatalf("expected blocked, got %v", err)
+	}
+}
+
+func TestPrepareSpeedtestNetUsesManualServer(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/latency.txt", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("test=test\n"))
+	})
+	manual := httptest.NewServer(mux)
+	t.Cleanup(manual.Close)
+	listCalled := false
+	list := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		listCalled = true
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	t.Cleanup(list.Close)
+	oldURL, oldScheme := speedtestNetServersURL, speedtestNetScheme
+	speedtestNetServersURL, speedtestNetScheme = list.URL, "http"
+	t.Cleanup(func() { speedtestNetServersURL, speedtestNetScheme = oldURL, oldScheme })
+
+	host := strings.TrimPrefix(manual.URL, "http://")
+	tester := newSpeedTester(SpeedTestParams{Provider: "speedtest", Server: &speedtestNetServer{Host: host, Name: "Tokyo", Cc: "jp", Sponsor: "Manual"}}, true)
+	t.Cleanup(tester.release)
+	target, err := tester.prepare(context.Background(), tester)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if listCalled || target.server.Sponsor != "Manual" || target.server.Country != "JP" || target.uploadURL != manual.URL+"/upload" {
+		t.Fatalf("unexpected target %+v %+v", target, target.server)
+	}
+}
+
+func TestHandleSpeedTestServersSearchesAndSortsByLatency(t *testing.T) {
+	slowMux := http.NewServeMux()
+	slowMux.HandleFunc("/latency.txt", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(200 * time.Millisecond)
+		_, _ = w.Write([]byte("test=test\n"))
+	})
+	slow := httptest.NewServer(slowMux)
+	t.Cleanup(slow.Close)
+	fastMux := http.NewServeMux()
+	fastMux.HandleFunc("/latency.txt", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("test=test\n"))
+	})
+	fast := httptest.NewServer(fastMux)
+	t.Cleanup(fast.Close)
+	broken := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(broken.Close)
+	host := func(server *httptest.Server) string { return strings.TrimPrefix(server.URL, "http://") }
+	var search string
+	list := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		search = r.URL.Query().Get("search")
+		_, _ = fmt.Fprintf(w, `[{"host":"%s","name":"Broken"},{"host":"%s","name":"Slow"},{"host":"%s","name":"Fast"},{"host":""}]`, host(broken), host(slow), host(fast))
+	}))
+	t.Cleanup(list.Close)
+	oldURL, oldScheme := speedtestNetServersURL, speedtestNetScheme
+	speedtestNetServersURL, speedtestNetScheme = list.URL+"?engine=js", "http"
+	t.Cleanup(func() { speedtestNetServersURL, speedtestNetScheme = oldURL, oldScheme })
+
+	var servers []speedtestNetServer
+	if err := json.Unmarshal([]byte(HandleSpeedTestServers(`{"search":"New York"}`)), &servers); err != nil {
+		t.Fatal(err)
+	}
+	if search != "New York" {
+		t.Fatalf("search = %q", search)
+	}
+	if len(servers) != 3 || servers[0].Name != "Fast" || servers[1].Name != "Slow" || servers[2].Name != "Broken" || servers[0].Latency <= 0 || servers[2].Latency != 0 {
+		t.Fatalf("unexpected servers %+v", servers)
 	}
 }
 

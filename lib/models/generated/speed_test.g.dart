@@ -132,6 +132,24 @@ Map<String, dynamic> _$SpeedTestRecordToJson(_SpeedTestRecord instance) =>
       'result': instance.result,
     };
 
+_SpeedTestNode _$SpeedTestNodeFromJson(Map<String, dynamic> json) =>
+    _SpeedTestNode(
+      host: json['host'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      cc: json['cc'] as String? ?? '',
+      sponsor: json['sponsor'] as String? ?? '',
+      latency: (json['latency'] as num?)?.toDouble() ?? 0,
+    );
+
+Map<String, dynamic> _$SpeedTestNodeToJson(_SpeedTestNode instance) =>
+    <String, dynamic>{
+      'host': instance.host,
+      'name': instance.name,
+      'cc': instance.cc,
+      'sponsor': instance.sponsor,
+      'latency': instance.latency,
+    };
+
 _SpeedTestSettings _$SpeedTestSettingsFromJson(Map<String, dynamic> json) =>
     _SpeedTestSettings(
       provider:
@@ -143,6 +161,9 @@ _SpeedTestSettings _$SpeedTestSettingsFromJson(Map<String, dynamic> json) =>
       duration: (json['duration'] as num?)?.toInt() ?? 10,
       multiThread: json['multiThread'] as bool? ?? true,
       useSystemDns: json['use-system-dns'] as bool? ?? false,
+      server: json['server'] == null
+          ? null
+          : SpeedTestNode.fromJson(json['server'] as Map<String, dynamic>),
     );
 
 Map<String, dynamic> _$SpeedTestSettingsToJson(_SpeedTestSettings instance) =>
@@ -152,6 +173,7 @@ Map<String, dynamic> _$SpeedTestSettingsToJson(_SpeedTestSettings instance) =>
       'duration': instance.duration,
       'multiThread': instance.multiThread,
       'use-system-dns': instance.useSystemDns,
+      'server': instance.server,
     };
 
 const _$SpeedTestProtocolEnumMap = {

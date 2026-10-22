@@ -855,6 +855,7 @@
   "speedTestResponsiveness": "پاسخگویی",
   "speedTestDataUsed": "داده مصرفی",
   "speedTestServer": "سرور تست",
+  "speedTestServerAutoDesc": "انتخاب خودکار سرور Speedtest",
   "speedTestProtocol": "پروتکل",
   "speedTestMobileDataTip": "در حال استفاده از داده همراه هستید. هر تست ممکن است صدها مگابایت مصرف کند. ادامه می‌دهید؟",
   "speedTestErrorRejected": "توسط قوانین مسدود شد",

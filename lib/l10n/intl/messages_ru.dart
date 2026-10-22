@@ -2000,6 +2000,9 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "speedTestRoute": MessageLookupByLibrary.simpleMessage("Правило"),
     "speedTestServer": MessageLookupByLibrary.simpleMessage("Сервер теста"),
+    "speedTestServerAutoDesc": MessageLookupByLibrary.simpleMessage(
+      "Автоматически выбирать сервер Speedtest",
+    ),
     "speedTestSettings": MessageLookupByLibrary.simpleMessage(
       "Настройки теста",
     ),

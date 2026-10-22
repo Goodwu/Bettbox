@@ -163,6 +163,7 @@ const (
 	startSpeedTestMethod                 Method = "startSpeedTest"
 	cancelSpeedTestMethod                Method = "cancelSpeedTest"
 	probeSpeedTestMethod                 Method = "probeSpeedTest"
+	getSpeedTestServersMethod            Method = "getSpeedTestServers"
 	startStunTestMethod                  Method = "startStunTest"
 	cancelStunTestMethod                 Method = "cancelStunTest"
 	startIperfServerMethod               Method = "startIperfServer"

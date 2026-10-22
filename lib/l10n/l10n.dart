@@ -7075,6 +7075,16 @@ class AppLocalizations {
     );
   }
 
+  /// `Automatically select Speedtest server`
+  String get speedTestServerAutoDesc {
+    return Intl.message(
+      'Automatically select Speedtest server',
+      name: 'speedTestServerAutoDesc',
+      desc: '',
+      args: [],
+    );
+  }
+
   /// `Protocol`
   String get speedTestProtocol {
     return Intl.message(

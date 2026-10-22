@@ -131,6 +131,10 @@ func handleAction(action *Action, result ActionResult) {
 		data := action.Data.(string)
 		result.success(toolbox.HandleProbeSpeedTest(data))
 		return
+	case getSpeedTestServersMethod:
+		data := action.Data.(string)
+		result.success(toolbox.HandleSpeedTestServers(data))
+		return
 	case cancelSpeedTestMethod:
 		result.success(toolbox.HandleCancelSpeedTest())
 		return

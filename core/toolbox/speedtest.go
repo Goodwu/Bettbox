@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"math"
 	"net"
 	"net/netip"
+	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -109,13 +111,14 @@ func getSpeedUploadPayload() []byte {
 }
 
 type SpeedTestParams struct {
-	Provider     string `json:"provider"`
-	Lang         string `json:"lang"`
-	Proxy        string `json:"proxy"`
-	Duration     int    `json:"duration"`
-	Protocol     string `json:"protocol"`
-	Streams      int    `json:"streams"`
-	UseSystemDns bool   `json:"use-system-dns"`
+	Provider     string              `json:"provider"`
+	Lang         string              `json:"lang"`
+	Proxy        string              `json:"proxy"`
+	Duration     int                 `json:"duration"`
+	Protocol     string              `json:"protocol"`
+	Streams      int                 `json:"streams"`
+	UseSystemDns bool                `json:"use-system-dns"`
+	Server       *speedtestNetServer `json:"server"`
 }
 
 type SpeedTestOutbound struct {
@@ -845,13 +848,59 @@ func prepareAppleSpeedTest(ctx context.Context, t *speedTester) (*speedTestTarge
 }
 
 type speedtestNetServer struct {
-	Host    string `json:"host"`
-	Name    string `json:"name"`
-	Cc      string `json:"cc"`
-	Sponsor string `json:"sponsor"`
+	Host    string  `json:"host"`
+	Name    string  `json:"name"`
+	Cc      string  `json:"cc"`
+	Sponsor string  `json:"sponsor"`
+	Latency float64 `json:"latency"`
+}
+
+type speedtestNetServersParams struct {
+	Proxy  string `json:"proxy"`
+	Search string `json:"search"`
+}
+
+func HandleSpeedTestServers(paramsString string) string {
+	params := speedtestNetServersParams{}
+	_ = json.Unmarshal([]byte(paramsString), &params)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	tester := newSpeedTester(SpeedTestParams{Provider: "speedtest", Proxy: params.Proxy}, !coreRunning())
+	defer tester.release()
+	servers, err := tester.fetchSpeedtestNetServers(ctx, params.Search)
+	if err != nil {
+		return "[]"
+	}
+	tester.measureSpeedtestNetServers(ctx, servers)
+	slices.SortStableFunc(servers, func(a, b speedtestNetServer) int {
+		switch {
+		case a.Latency == b.Latency:
+			return 0
+		case a.Latency <= 0:
+			return 1
+		case b.Latency <= 0:
+			return -1
+		case a.Latency < b.Latency:
+			return -1
+		default:
+			return 1
+		}
+	})
+	data, _ := json.Marshal(servers)
+	return string(data)
 }
 
 func prepareSpeedtestNet(ctx context.Context, t *speedTester) (*speedTestTarget, error) {
+	if server := t.params.Server; server != nil && server.Host != "" {
+		_, resp, err := t.latencyOnce(ctx, t.client, speedtestNetScheme+"://"+server.Host+"/latency.txt")
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusOK {
+			return nil, errSpeedTestBlocked
+		}
+		return speedtestNetTarget(*server), nil
+	}
 	target, err := prepareSpeedtestNetOnce(ctx, t)
 	if err == nil || ctx.Err() != nil {
 		return target, err
@@ -860,13 +909,9 @@ func prepareSpeedtestNet(ctx context.Context, t *speedTester) (*speedTestTarget,
 }
 
 func prepareSpeedtestNetOnce(ctx context.Context, t *speedTester) (*speedTestTarget, error) {
-	resp, body, err := t.fetch(ctx, t.client, speedtestNetServersURL, 256*1024)
+	servers, err := t.fetchSpeedtestNetServers(ctx, "")
 	if err != nil {
 		return nil, err
-	}
-	var servers []speedtestNetServer
-	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &servers) != nil || len(servers) == 0 {
-		return nil, errSpeedTestBlocked
 	}
 	server, ok := t.pickSpeedtestNetServer(ctx, servers)
 	if !ok {
@@ -875,6 +920,10 @@ func prepareSpeedtestNetOnce(ctx context.Context, t *speedTester) (*speedTestTar
 		}
 		return nil, errSpeedTestBlocked
 	}
+	return speedtestNetTarget(server), nil
+}
+
+func speedtestNetTarget(server speedtestNetServer) *speedTestTarget {
 	base := speedtestNetScheme + "://" + server.Host
 	return &speedTestTarget{
 		latencyURL:  base + "/latency.txt",
@@ -886,37 +935,53 @@ func prepareSpeedtestNetOnce(ctx context.Context, t *speedTester) (*speedTestTar
 			Host:    server.Host,
 			Sponsor: server.Sponsor,
 		},
-	}, nil
+	}
+}
+
+func (t *speedTester) fetchSpeedtestNetServers(ctx context.Context, search string) ([]speedtestNetServer, error) {
+	listURL := speedtestNetServersURL
+	if search = strings.TrimSpace(search); search != "" {
+		listURL += "&search=" + url.QueryEscape(search)
+	}
+	resp, body, err := t.fetch(ctx, t.client, listURL, 256*1024)
+	if err != nil {
+		return nil, err
+	}
+	var servers []speedtestNetServer
+	if resp.StatusCode != http.StatusOK || json.Unmarshal(body, &servers) != nil {
+		return nil, errSpeedTestBlocked
+	}
+	servers = slices.DeleteFunc(servers, func(server speedtestNetServer) bool {
+		return server.Host == ""
+	})
+	if len(servers) == 0 && search == "" {
+		return nil, errSpeedTestBlocked
+	}
+	return servers, nil
+}
+
+func (t *speedTester) measureSpeedtestNetServers(ctx context.Context, servers []speedtestNetServer) {
+	var wg sync.WaitGroup
+	for index := range servers {
+		servers[index].Latency = 0
+		wg.Add(1)
+		go func(server *speedtestNetServer) {
+			defer wg.Done()
+			rtt, resp, err := t.latencyOnce(ctx, t.client, speedtestNetScheme+"://"+server.Host+"/latency.txt")
+			if err == nil && resp.StatusCode == http.StatusOK {
+				server.Latency = math.Max(rtt, 0.001)
+			}
+		}(&servers[index])
+	}
+	wg.Wait()
 }
 
 func (t *speedTester) pickSpeedtestNetServer(ctx context.Context, servers []speedtestNetServer) (speedtestNetServer, bool) {
-	type result struct {
-		index   int
-		latency float64
-	}
-	results := make(chan result, len(servers))
-	var wg sync.WaitGroup
-	for index, server := range servers {
-		if server.Host == "" {
-			continue
-		}
-		wg.Add(1)
-		go func(index int, host string) {
-			defer wg.Done()
-			rtt, resp, err := t.latencyOnce(ctx, t.client, speedtestNetScheme+"://"+host+"/latency.txt")
-			if err == nil && resp.StatusCode == http.StatusOK {
-				results <- result{index: index, latency: rtt}
-			}
-		}(index, server.Host)
-	}
-	wg.Wait()
-	close(results)
+	t.measureSpeedtestNetServers(ctx, servers)
 	best := -1
-	bestLatency := 0.0
-	for item := range results {
-		if best < 0 || item.latency < bestLatency {
-			best = item.index
-			bestLatency = item.latency
+	for index, server := range servers {
+		if server.Latency > 0 && (best < 0 || server.Latency < servers[best].Latency) {
+			best = index
 		}
 	}
 	if best < 0 {
