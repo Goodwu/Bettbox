@@ -7,16 +7,13 @@ import (
 	"fmt"
 	"path/filepath"
 	"runtime"
-	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/dlclark/regexp2"
-	"github.com/metacubex/mihomo/common/orderedmap"
 	"github.com/metacubex/mihomo/common/yaml"
 	"github.com/metacubex/mihomo/config"
 	LC "github.com/metacubex/mihomo/listener/config"
-	"github.com/metacubex/mihomo/log"
 )
 
 type PatchHost struct {
@@ -34,7 +31,6 @@ type PatchParams struct {
 	GeoXUrl            json.RawMessage `json:"geox-url"`
 	Hosts              []PatchHost     `json:"hosts"`
 	OverrideDns        bool            `json:"override-dns"`
-	DnsNodeOverride    bool            `json:"dns-node-override"`
 	Dns                json.RawMessage `json:"dns"`
 	Ntp                json.RawMessage `json:"ntp"`
 	Sniffer            json.RawMessage `json:"sniffer"`
@@ -54,31 +50,6 @@ const defaultHealthCheckTimeout = 5000
 var patchForAndroid = runtime.GOOS == "android"
 
 var protectedProxyNames = []string{"DIRECT", "REJECT", "REJECT-DROP", "COMPATIBLE", "PASS"}
-
-var commonDnsList = []string{
-	"223.5.5.5", "223.6.6.6", "119.29.29.29", "1.12.12.12", "120.53.53.53",
-	"114.114.114.114", "180.76.76.76", "1.2.4.8", "116.116.116.116",
-	"101.226.4.6", "123.125.81.6", "180.184.1.1", "180.184.2.2",
-	"1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4", "9.9.9.9", "149.112.112.112",
-	"208.67.222.222", "208.67.220.220", "94.140.14.14", "94.140.15.15",
-	"76.76.2.0", "76.76.10.0", "185.228.168.9", "185.228.169.9",
-	"77.88.8.8", "77.88.8.1", "156.154.70.1", "156.154.71.1",
-	"119.28.28.28", "101.6.6.6", "101.101.101.101", "101.102.103.104",
-	"185.222.222.222", "45.11.45.11", "1.1.1.2", "1.0.0.2", "1.1.1.3", "1.0.0.3",
-	"9.9.9.10", "9.9.9.11", "149.112.112.10", "149.112.112.11",
-	"2400:3200::1", "2400:3200:baba::1", "2402:4e00::", "2400:da00::6666",
-	"2606:4700:4700::1111", "2606:4700:4700::1001",
-	"2001:4860:4860::8888", "2001:4860:4860::8844",
-	"2620:fe::fe", "2620:fe::9", "2620:119:35::35", "2620:119:53::53",
-	"2a10:50c0::bad1:ff", "2a10:50c0::bad2:ff", "2a10:50c0::ad1:ff", "2a10:50c0::ad2:ff",
-	"2a0d:2a00:1::2", "2a0d:2a00:2::2", "2a02:6b8::feed:0ff", "2a02:6b8:0:1::feed:0ff",
-	"2610:a1:1018::1", "2610:a1:1019::1",
-	"alidns", "doh.pub", "dot.pub", "dns.pub", "dnspod", "dns.baidu",
-	"dns.google", "dns.apple", "cloudflare", "one.one.one.one",
-	"quad9", "opendns", "nextdns", "adguard",
-	"dns.sb", "twnic", "mullvad", "controld", "cleanbrowsing", "yandex",
-	"system",
-}
 
 var ruleActionsWithParams = map[string]bool{
 	"GEOIP": true, "IP-ASN": true, "SRC-IP-ASN": true, "IP-CIDR": true,
@@ -119,8 +90,8 @@ func applyPatch(raw *config.RawConfig, params *PatchParams) (string, error) {
 	}
 	patchProviderPaths(raw.ProxyProvider, params.ProvidersPath, "proxies")
 	patchProviderPaths(raw.RuleProvider, params.ProvidersPath, "rules")
-	hostOrder := patchHosts(raw, params.Hosts)
-	if err := patchDns(raw, params, defaults, hostOrder); err != nil {
+	patchHosts(raw, params.Hosts)
+	if err := patchDns(raw, params, defaults); err != nil {
 		return "", err
 	}
 	if hasPatchValue(params.Ntp) {
@@ -223,28 +194,18 @@ func patchProviderPaths(providers map[string]map[string]any, base string, kind s
 	}
 }
 
-func patchHosts(raw *config.RawConfig, hosts []PatchHost) []string {
+func patchHosts(raw *config.RawConfig, hosts []PatchHost) {
 	if raw.Hosts == nil {
 		raw.Hosts = make(map[string]any, len(hosts))
 	}
-	order := make([]string, 0, len(raw.Hosts)+len(hosts))
-	for key := range raw.Hosts {
-		order = append(order, key)
-	}
-	sort.Strings(order)
 	for _, host := range hosts {
-		if _, exist := raw.Hosts[host.Key]; !exist {
-			order = append(order, host.Key)
-		}
 		raw.Hosts[host.Key] = host.Value
 	}
-	return order
 }
 
-func patchDns(raw *config.RawConfig, params *PatchParams, defaults *config.RawConfig, hostOrder []string) error {
+func patchDns(raw *config.RawConfig, params *PatchParams, defaults *config.RawConfig) error {
 	enabled := raw.DNS.Enable
 	if params.OverrideDns || !enabled {
-		original := raw.DNS
 		dns := defaults.DNS
 		if hasPatchValue(params.Dns) {
 			if err := yaml.Unmarshal(params.Dns, &dns); err != nil {
@@ -258,9 +219,6 @@ func patchDns(raw *config.RawConfig, params *PatchParams, defaults *config.RawCo
 			dns.NameServer = ns
 		}
 		raw.DNS = dns
-		if params.DnsNodeOverride {
-			applyDnsNodeOverride(raw, &original, hostOrder)
-		}
 	}
 	raw.DNS.FallbackFilter.GeoSite = []string{}
 
@@ -283,427 +241,6 @@ func patchDns(raw *config.RawConfig, params *PatchParams, defaults *config.RawCo
 		raw.DNS.Listen = "127.0.0.1" + strings.TrimPrefix(listen, "0.0.0.0")
 	}
 	return nil
-}
-
-type domainMatcher struct {
-	domains      []string
-	exactSet     map[string]struct{}
-	dotSuffixSet map[string]struct{}
-}
-
-func newDomainMatcher(domains []string) domainMatcher {
-	exactSet := make(map[string]struct{}, len(domains))
-	dotSuffixSet := make(map[string]struct{}, len(domains)*2)
-	for _, d := range domains {
-		exactSet[d] = struct{}{}
-		for i := 0; i < len(d); i++ {
-			if d[i] == '.' {
-				dotSuffixSet[d[i+1:]] = struct{}{}
-			}
-		}
-	}
-	return domainMatcher{
-		domains:      domains,
-		exactSet:     exactSet,
-		dotSuffixSet: dotSuffixSet,
-	}
-}
-
-func (m *domainMatcher) match(pattern string) bool {
-	if len(m.domains) == 0 {
-		return false
-	}
-	pattern = strings.ToLower(pattern)
-	if strings.HasPrefix(pattern, "+.") {
-		suffix := pattern[2:]
-		if _, ok := m.exactSet[suffix]; ok {
-			return true
-		}
-		_, ok := m.dotSuffixSet[suffix]
-		return ok
-	}
-	if strings.HasPrefix(pattern, ".") {
-		suffix := pattern[1:]
-		_, ok := m.dotSuffixSet[suffix]
-		return ok
-	}
-	if strings.IndexByte(pattern, '*') == -1 {
-		_, ok := m.exactSet[pattern]
-		return ok
-	}
-	patternParts := strings.Split(pattern, ".")
-	for _, domain := range m.domains {
-		if matchWildcardParts(patternParts, domain) {
-			return true
-		}
-	}
-	return false
-}
-
-func applyDnsNodeOverride(raw *config.RawConfig, original *config.RawDNS, hostOrder []string) {
-	proxyServerNameservers := original.ProxyServerNameserver
-	listen := original.Listen
-	lowerListen := strings.ToLower(listen)
-	rewriteByHosts := false
-	if len(proxyServerNameservers) == 1 && listen != "" {
-		nameserver := strings.ToLower(proxyServerNameservers[0])
-		rewriteByHosts = strings.Contains(nameserver, lowerListen) ||
-			(strings.Contains(listen, "0.0.0.0") && strings.Contains(nameserver, "127.0.0.1"))
-	}
-
-	seenDomains := make(map[string]bool, len(raw.Proxy))
-	proxyDomains := make([]string, 0, len(raw.Proxy))
-	collectServers := func() {
-		for _, proxy := range raw.Proxy {
-			server, ok := proxy["server"].(string)
-			if !ok {
-				continue
-			}
-			server = strings.ToLower(server)
-			if !seenDomains[server] {
-				seenDomains[server] = true
-				proxyDomains = append(proxyDomains, server)
-			}
-		}
-	}
-	collectServers()
-	if rewriteByHosts {
-		applyHostsToProxies(raw.Proxy, raw.Hosts, hostOrder)
-		collectServers()
-	}
-
-	isCommonDns := func(dns string) bool {
-		dns = strings.ToLower(dns)
-		if rewriteByHosts && strings.Contains(dns, lowerListen) {
-			return true
-		}
-		for _, item := range commonDnsList {
-			if strings.Contains(dns, item) {
-				return true
-			}
-		}
-		return false
-	}
-
-	candCap := len(original.NameServer)
-	if !rewriteByHosts {
-		candCap += len(proxyServerNameservers)
-	}
-	seenDns := make(map[string]bool, candCap)
-	var privateDns []string
-	collectPrivateDns := func(list []string) {
-		for _, dns := range list {
-			stripped := stripDnsSuffix(dns)
-			if stripped == "" || seenDns[stripped] || isCommonDns(stripped) {
-				continue
-			}
-			seenDns[stripped] = true
-			privateDns = append(privateDns, stripped)
-		}
-	}
-	collectPrivateDns(original.NameServer)
-	if !rewriteByHosts {
-		collectPrivateDns(proxyServerNameservers)
-	}
-
-	matcher := newDomainMatcher(proxyDomains)
-
-	var originalPolicy *orderedmap.OrderedMap[string, any]
-	switch {
-	case original.NameServerPolicy == nil || original.NameServerPolicy.Len() == 0:
-		originalPolicy = original.ProxyServerNameserverPolicy
-	case original.ProxyServerNameserverPolicy == nil || original.ProxyServerNameserverPolicy.Len() == 0:
-		originalPolicy = original.NameServerPolicy
-	default:
-		originalPolicy = orderedmap.New[string, any]()
-		for pair := original.NameServerPolicy.Oldest(); pair != nil; pair = pair.Next() {
-			originalPolicy.Set(pair.Key, pair.Value)
-		}
-		for pair := original.ProxyServerNameserverPolicy.Oldest(); pair != nil; pair = pair.Next() {
-			originalPolicy.Set(pair.Key, pair.Value)
-		}
-	}
-
-	proxyServerPolicy := orderedmap.New[string, any]()
-	if originalPolicy != nil {
-		for pair := originalPolicy.Oldest(); pair != nil; pair = pair.Next() {
-			if !matcher.match(pair.Key) {
-				continue
-			}
-			if list, ok := pair.Value.([]any); ok {
-				stripped := make([]any, 0, len(list))
-				for _, item := range list {
-					var text string
-					if s, ok := item.(string); ok {
-						text = s
-					} else {
-						text = fmt.Sprint(item)
-					}
-					if value := stripDnsSuffix(text); value != "" {
-						stripped = append(stripped, value)
-					}
-				}
-				if len(stripped) == 0 {
-					continue
-				}
-				proxyServerPolicy.Set(pair.Key, stripped)
-				continue
-			}
-			if s, ok := pair.Value.(string); ok {
-				proxyServerPolicy.Set(pair.Key, stripDnsSuffix(s))
-			} else {
-				proxyServerPolicy.Set(pair.Key, stripDnsSuffix(fmt.Sprint(pair.Value)))
-			}
-		}
-	}
-
-	var proxyFakeIpFilter []string
-	for _, pattern := range original.FakeIPFilter {
-		if matcher.match(pattern) {
-			proxyFakeIpFilter = append(proxyFakeIpFilter, pattern)
-		}
-	}
-
-	if len(privateDns) > 0 {
-		raw.DNS.ProxyServerNameserver = privateDns
-	}
-	if proxyServerPolicy.Len() > 0 {
-		raw.DNS.ProxyServerNameserverPolicy = proxyServerPolicy
-	}
-	if len(proxyFakeIpFilter) > 0 {
-		merged := make([]string, len(raw.DNS.FakeIPFilter)+len(proxyFakeIpFilter))
-		copy(merged, raw.DNS.FakeIPFilter)
-		copy(merged[len(raw.DNS.FakeIPFilter):], proxyFakeIpFilter)
-		raw.DNS.FakeIPFilter = merged
-	}
-	if rewriteByHosts || len(privateDns) > 0 || proxyServerPolicy.Len() > 0 || len(proxyFakeIpFilter) > 0 {
-		log.Infoln("[APP] dns override: private dns %v, node policies %d, fake-ip filters %d, nodes rewritten by hosts: %t", privateDns, proxyServerPolicy.Len(), len(proxyFakeIpFilter), rewriteByHosts)
-	}
-}
-
-func hostSpecificity(pattern string) int {
-	if strings.HasPrefix(pattern, "+.") {
-		return 2
-	}
-	if strings.HasPrefix(pattern, ".") {
-		return 1
-	}
-	if strings.IndexByte(pattern, '*') != -1 {
-		return 0
-	}
-	return 3
-}
-
-func hasDotSuffix(domain, suffix string) bool {
-	return len(domain) > len(suffix) &&
-		domain[len(domain)-len(suffix)-1] == '.' &&
-		domain[len(domain)-len(suffix):] == suffix
-}
-
-func matchWildcardParts(patternParts []string, domain string) bool {
-	start := 0
-	for i, part := range patternParts {
-		end := strings.IndexByte(domain[start:], '.')
-		if i == len(patternParts)-1 {
-			if end != -1 {
-				return false
-			}
-			return part == "*" || part == domain[start:]
-		}
-		if end == -1 {
-			return false
-		}
-		if part != "*" && part != domain[start:start+end] {
-			return false
-		}
-		start += end + 1
-	}
-	return true
-}
-
-func matchDomainPattern(pattern string, domains []string) bool {
-	if len(domains) == 0 {
-		return false
-	}
-	pattern = strings.ToLower(pattern)
-	if strings.HasPrefix(pattern, "+.") {
-		suffix := pattern[2:]
-		for _, domain := range domains {
-			if domain == suffix || hasDotSuffix(domain, suffix) {
-				return true
-			}
-		}
-		return false
-	}
-	if strings.HasPrefix(pattern, ".") {
-		suffix := pattern[1:]
-		for _, domain := range domains {
-			if hasDotSuffix(domain, suffix) {
-				return true
-			}
-		}
-		return false
-	}
-	if strings.IndexByte(pattern, '*') == -1 {
-		for _, domain := range domains {
-			if domain == pattern {
-				return true
-			}
-		}
-		return false
-	}
-	patternParts := strings.Split(pattern, ".")
-	for _, domain := range domains {
-		if matchWildcardParts(patternParts, domain) {
-			return true
-		}
-	}
-	return false
-}
-
-func stripDnsSuffix(dns string) string {
-	index := strings.IndexByte(dns, '#')
-	if index == -1 {
-		return dns
-	}
-	suffix := strings.TrimSpace(strings.ToLower(dns[index+1:]))
-	if suffix == "direct" || strings.HasPrefix(suffix, "direct&") {
-		return dns
-	}
-	if strings.Contains(suffix, "direct") || strings.Contains(suffix, "直连") {
-		return strings.TrimSpace(dns[:index]) + "#DIRECT"
-	}
-	return dns[:index]
-}
-
-func hostTarget(value any) string {
-	if list, ok := value.([]any); ok {
-		for _, item := range list {
-			if text, ok := item.(string); ok && text != "" {
-				return text
-			}
-		}
-		return ""
-	}
-	text, _ := value.(string)
-	return text
-}
-
-type compiledHostEntry struct {
-	specificity int
-	suffix      string
-	parts       []string
-	target      string
-}
-
-func (e *compiledHostEntry) matchSingle(domain string) bool {
-	switch e.specificity {
-	case 2:
-		return domain == e.suffix || hasDotSuffix(domain, e.suffix)
-	case 1:
-		return hasDotSuffix(domain, e.suffix)
-	case 0:
-		return matchWildcardParts(e.parts, domain)
-	default:
-		return domain == e.suffix
-	}
-}
-
-func applyHostsToProxies(proxies []map[string]any, hosts map[string]any, hostOrder []string) {
-	if len(proxies) == 0 || len(hostOrder) == 0 {
-		return
-	}
-	var exactHosts map[string]string
-	var wildcardEntries []compiledHostEntry
-
-	for _, key := range hostOrder {
-		value := hosts[key]
-		if list, ok := value.([]any); ok {
-			if len(list) == 0 {
-				continue
-			}
-		} else if text, ok := value.(string); !ok || text == "" {
-			continue
-		}
-		target := hostTarget(value)
-		spec := hostSpecificity(key)
-		lowerKey := strings.ToLower(key)
-		if spec == 3 {
-			if exactHosts == nil {
-				exactHosts = make(map[string]string, len(hostOrder))
-			}
-			if _, exists := exactHosts[lowerKey]; !exists {
-				exactHosts[lowerKey] = target
-			}
-			continue
-		}
-		entry := compiledHostEntry{
-			specificity: spec,
-			target:      target,
-		}
-		switch spec {
-		case 2:
-			entry.suffix = lowerKey[2:]
-		case 1:
-			entry.suffix = lowerKey[1:]
-		case 0:
-			entry.parts = strings.Split(lowerKey, ".")
-		}
-		wildcardEntries = append(wildcardEntries, entry)
-	}
-	if len(exactHosts) == 0 && len(wildcardEntries) == 0 {
-		return
-	}
-	if len(wildcardEntries) > 1 {
-		sort.SliceStable(wildcardEntries, func(i, j int) bool {
-			return wildcardEntries[i].specificity > wildcardEntries[j].specificity
-		})
-	}
-
-	cache := make(map[string]string, 16)
-	seen := make(map[string]bool, 8)
-	resolve := func(server string) string {
-		if cached, ok := cache[server]; ok {
-			return cached
-		}
-		for k := range seen {
-			delete(seen, k)
-		}
-		current := strings.ToLower(server)
-		result := server
-		for !seen[current] {
-			seen[current] = true
-			target := ""
-			if exactHosts != nil {
-				target = exactHosts[current]
-			}
-			if target == "" {
-				for i := range wildcardEntries {
-					if wildcardEntries[i].matchSingle(current) {
-						target = wildcardEntries[i].target
-						break
-					}
-				}
-			}
-			if target == "" {
-				break
-			}
-			result = target
-			current = strings.ToLower(target)
-		}
-		cache[server] = result
-		return result
-	}
-
-	for _, proxy := range proxies {
-		server, ok := proxy["server"].(string)
-		if !ok {
-			continue
-		}
-		if resolved := resolve(server); resolved != server {
-			proxy["server"] = resolved
-		}
-	}
 }
 
 func groupName(group map[string]any) (string, bool) {

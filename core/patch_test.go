@@ -196,15 +196,14 @@ func TestApplyPatchDnsInjection(t *testing.T) {
 	})
 	params := patchParams(t, `{}`)
 	params.Dns = dns
-	params.DnsNodeOverride = true
 	if _, err := applyPatch(rawCfg, params); err != nil {
 		t.Fatal(err)
 	}
 	if !rawCfg.DNS.Enable || !reflect.DeepEqual(rawCfg.DNS.NameServer, []string{"1.1.1.1", "system://"}) {
 		t.Errorf("dns = %+v", rawCfg.DNS.NameServer)
 	}
-	if !reflect.DeepEqual(rawCfg.DNS.ProxyServerNameserver, []string{"10.0.0.1"}) {
-		t.Errorf("private dns should become proxy-server-nameserver: %v", rawCfg.DNS.ProxyServerNameserver)
+	if len(rawCfg.DNS.ProxyServerNameserver) != 0 {
+		t.Errorf("original dns should not leak into proxy-server-nameserver: %v", rawCfg.DNS.ProxyServerNameserver)
 	}
 
 	enabled := parsePatchProfile(t, "dns: {enable: true, nameserver: ['10.0.0.1']}\n")

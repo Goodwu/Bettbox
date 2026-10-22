@@ -968,8 +968,6 @@ class GlobalState {
     final overrideData = profile.overrideData;
     final isRussian =
         config.appSetting.locale?.toLowerCase().startsWith('ru') ?? false;
-    final isChinese =
-        config.appSetting.locale?.toLowerCase().startsWith('zh') ?? false;
     final listenPorts = patchConfig.listenPorts;
 
     return {
@@ -985,7 +983,6 @@ class GlobalState {
         },
       ],
       'override-dns': config.overrideDns,
-      'dns-node-override': isChinese,
       'dns': {
         ...dns.toJson(),
         'nameserver-policy': {
