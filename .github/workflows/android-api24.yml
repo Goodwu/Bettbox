@@ -6,6 +6,10 @@ on:
       - feature/android-api24
   workflow_dispatch:
 
+concurrency:
+  group: android-api24-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
