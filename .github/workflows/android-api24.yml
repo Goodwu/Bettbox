@@ -55,11 +55,15 @@ jobs:
           printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/keystore.jks
           test -s android/app/keystore.jks
           {
-            printf 'keyAlias=%s\\n' "$KEY_ALIAS"
-            printf 'storePassword=%s\\n' "$STORE_PASSWORD"
-            printf 'keyPassword=%s\\n' "$KEY_PASSWORD"
+            printf 'keyAlias=%s\n' "$KEY_ALIAS"
+            printf 'storePassword=%s\n' "$STORE_PASSWORD"
+            printf 'keyPassword=%s\n' "$KEY_PASSWORD"
           } >> android/local.properties
           chmod 600 android/app/keystore.jks android/local.properties
+          # Reject a malformed properties file instead of silently falling back to debug signing.
+          grep -qx "keyAlias=$KEY_ALIAS" android/local.properties
+          grep -q '^storePassword=' android/local.properties
+          grep -q '^keyPassword=' android/local.properties
       - name: Install Android NDK
         shell: bash
         run: |
@@ -90,6 +94,29 @@ jobs:
             echo "Inspecting $apk"
             "$AAPT" dump badging "$apk" | grep -E "^(package:|sdkVersion:|native-code:)"
             "$AAPT" dump badging "$apk" | grep -q "sdkVersion:'24'"
+          done
+      - name: Verify signing identity matches keystore
+        shell: bash
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          APKSIGNER="${ANDROID_SDK_ROOT}/build-tools/36.0.0/apksigner"
+          if [ ! -x "$APKSIGNER" ]; then APKSIGNER="$(find "${ANDROID_SDK_ROOT}/build-tools" -name apksigner -type f | sort -V | tail -1)"; fi
+          keytool -list -v -keystore android/app/keystore.jks -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS" > /tmp/api24-keystore-cert.txt
+          expected="$(sed -n 's/^[[:space:]]*SHA256: //p' /tmp/api24-keystore-cert.txt | head -1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          test -n "$expected"
+          for apk in build/app/outputs/flutter-apk/*.apk; do
+            actual="$("$APKSIGNER" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p' | head -1)"
+            test -n "$actual"
+            if [ "$actual" != "$expected" ]; then
+              echo "::error::APK $apk signature does not match configured keystore"
+              echo "Expected certificate: $expected"
+              echo "Actual certificate:   $actual"
+              exit 1
+            fi
+            echo "Verified certificate for $apk: $actual"
           done
       - name: Verify APK release signature
         shell: bash
