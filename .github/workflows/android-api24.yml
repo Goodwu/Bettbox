@@ -33,6 +33,29 @@ jobs:
           channel: stable
           flutter-version: '3.47.7'
           cache: true
+      - name: Configure persistent Android release signing
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for value in KEYSTORE_BASE64 KEY_ALIAS STORE_PASSWORD KEY_PASSWORD; do
+            if [ -z "${!value}" ]; then
+              echo "::error::Missing Android signing secret: $value"
+              exit 1
+            fi
+          done
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > android/app/keystore.jks
+          test -s android/app/keystore.jks
+          {
+            printf 'keyAlias=%s\\n' "$KEY_ALIAS"
+            printf 'storePassword=%s\\n' "$STORE_PASSWORD"
+            printf 'keyPassword=%s\\n' "$KEY_PASSWORD"
+          } >> android/local.properties
+          chmod 600 android/app/keystore.jks android/local.properties
       - name: Install Android NDK
         shell: bash
         run: |
@@ -63,6 +86,17 @@ jobs:
             echo "Inspecting $apk"
             "$AAPT" dump badging "$apk" | grep -E "^(package:|sdkVersion:|native-code:)"
             "$AAPT" dump badging "$apk" | grep -q "sdkVersion:'24'"
+          done
+      - name: Verify APK release signature
+        shell: bash
+        env:
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          APKSIGNER="${ANDROID_SDK_ROOT}/build-tools/36.0.0/apksigner"
+          if [ ! -x "$APKSIGNER" ]; then APKSIGNER="$(find "${ANDROID_SDK_ROOT}/build-tools" -name apksigner -type f | sort -V | tail -1)"; fi
+          for apk in build/app/outputs/flutter-apk/*.apk; do
+            "$APKSIGNER" verify --verbose --print-certs --min-sdk-version 24 "$apk"
           done
       - uses: actions/upload-artifact@v4
         with:
