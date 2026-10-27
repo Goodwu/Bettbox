@@ -1,0 +1,178 @@
+name: Sync upstream Bettbox
+
+# 每 6 小时同步上游 appshubcc/Bettbox（默认分支 = feature/android-api24，定时任务只读默认分支）：
+#   1. fork main 纯镜像快进到上游 main（分叉则跳过，不强推）；
+#   2. feature/android-api24 合入上游最新提交与新稳定 tag（vX.Y.Z，忽略 -test/-pre）；
+#   3. 合并推送后显式 dispatch "Android 7 API 24 compatibility" 构建
+#      （GITHUB_TOKEN 的 push 不会触发其它工作流，workflow_dispatch 除外）。
+# 合并冲突时不强推：开/复用跟踪 issue 并失败退出，等人工处理。
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      force_tag:
+        description: '强制合并指定上游 tag（例如 v1.20.0），留空则自动判断'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+  actions: write
+  issues: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+env:
+  UPSTREAM_URL: https://github.com/appshubcc/Bettbox.git
+  TARGET_BRANCH: feature/android-api24
+
+jobs:
+  sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name 'bettbox-sync[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+
+      - name: Fetch upstream and fork refs
+        run: |
+          set -euo pipefail
+          git remote add upstream "$UPSTREAM_URL" 2>/dev/null || true
+          git fetch --no-tags --force upstream \
+            '+refs/heads/main:refs/remotes/upstream/main' \
+            '+refs/tags/v*:refs/remotes/upstream/tags/v*'
+          git fetch --force origin \
+            "+refs/heads/$TARGET_BRANCH:refs/remotes/origin/$TARGET_BRANCH"
+
+      - name: Fast-forward mirror main to upstream
+        run: |
+          set -euo pipefail
+          origin_main=$(git rev-parse refs/remotes/origin/main 2>/dev/null || echo '')
+          upstream_main=$(git rev-parse refs/remotes/upstream/main)
+          if [ "$origin_main" = "$upstream_main" ]; then
+            echo 'main 镜像已是最新。'
+          elif [ -n "$origin_main" ] && git merge-base --is-ancestor "$origin_main" "$upstream_main"; then
+            git push origin "refs/remotes/upstream/main:refs/heads/main"
+            echo "main 镜像已快进到上游 $(git rev-parse --short "$upstream_main")。"
+          else
+            echo "::warning::fork main 与上游分叉或不存在，跳过镜像同步（main 保持纯镜像，不强推）。"
+          fi
+
+      - name: Resolve latest stable upstream tag on main lineage
+        id: tag
+        run: |
+          set -euo pipefail
+          if [ -n '${{ github.event.inputs.force_tag }}' ]; then
+            ref="refs/remotes/upstream/tags/${{ github.event.inputs.force_tag }}"
+            git rev-parse --verify -q "$ref" >/dev/null || { echo '::error::上游不存在该 tag'; exit 1; }
+            echo "ref=$ref" >> "$GITHUB_OUTPUT"
+            echo "tag=${{ github.event.inputs.force_tag }}" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          latest=''
+          while read -r t; do
+            [ -n "$t" ] || continue
+            sha=$(git rev-parse "refs/remotes/upstream/tags/$t")
+            if git merge-base --is-ancestor "$sha" refs/remotes/upstream/main; then
+              latest="$t"; break
+            fi
+          done < <(git for-each-ref --format='%(refname:strip=4)' refs/remotes/upstream/tags \
+            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -rV)
+          if [ -z "$latest" ]; then
+            echo '::warning::上游 main 链上找不到稳定 tag，仅同步 main。'
+            exit 0
+          fi
+          echo "tag=$latest" >> "$GITHUB_OUTPUT"
+          echo "ref=refs/remotes/upstream/tags/$latest" >> "$GITHUB_OUTPUT"
+
+      - name: Merge upstream into target branch
+        id: merge
+        run: |
+          set -euo pipefail
+          git checkout -B "$TARGET_BRANCH" "refs/remotes/origin/$TARGET_BRANCH"
+          tag='${{ steps.tag.outputs.tag }}'
+          merge_specs=()
+          if ! git merge-base --is-ancestor refs/remotes/upstream/main HEAD; then
+            merge_specs+=(refs/remotes/upstream/main)
+          fi
+          if [ -n "$tag" ] && ! git merge-base --is-ancestor '${{ steps.tag.outputs.ref }}' HEAD; then
+            merge_specs+=('${{ steps.tag.outputs.ref }}')
+          fi
+          if [ ${#merge_specs[@]} -eq 0 ]; then
+            echo "merged=false" >> "$GITHUB_OUTPUT"
+            echo '上游无新提交/新稳定 tag，无需合并。'
+            exit 0
+          fi
+          msg="chore(sync): merge upstream"
+          [ -n "$tag" ] && msg="$msg $tag"
+          msg="$msg into $TARGET_BRANCH"
+          if ! git merge --no-edit -m "$msg" "${merge_specs[@]}"; then
+            git merge --abort
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+          echo "merged=true" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "new_head=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Open tracking issue on conflict
+        if: steps.merge.outputs.conflict == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag='${{ steps.merge.outputs.tag }}'
+          title="[sync] 合并上游 ${tag:-最新代码} 到 $TARGET_BRANCH 冲突"
+          existing=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "$title in:title" --json number --jq '.[0].number')
+          if [ -n "$existing" ]; then
+            echo "已有跟踪 issue #$existing，跳过创建。"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$title" \
+              --body "定时同步发生合并冲突，需要人工处理。运行记录: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
+          echo "::error::$title"
+
+      - name: Trigger API24 build
+        if: steps.merge.outputs.merged == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh workflow run "Android 7 API 24 compatibility" --repo "$GITHUB_REPOSITORY" --ref "$TARGET_BRANCH"
+          echo "已 dispatch API24 构建（合并 ${{ steps.merge.outputs.tag }}，head ${{ steps.merge.outputs.new_head }}）。"
+
+      - name: Publish fork tag and trigger release build
+        if: steps.merge.outputs.merged == 'true' && steps.merge.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          tag='${{ steps.merge.outputs.tag }}'
+          sha='${{ steps.merge.outputs.new_head }}'
+          remote_ref=$(git ls-remote origin "refs/tags/$tag" | awk '{print $1}')
+          if [ -n "$remote_ref" ]; then
+            if [ "$remote_ref" = "$sha" ]; then
+              echo "fork 已存在同名 tag $tag 且指向同一提交，跳过重复发布。"
+            else
+              echo "::warning::fork 上已有 $tag 但指向 $remote_ref（非本次合并 $sha），不强推覆盖；release 构建未触发，请人工确认。"
+              exit 0
+            fi
+          else
+            git push origin "${sha}:refs/tags/${tag}"
+            echo "已在 fork 发布 tag $tag -> $(git rev-parse --short "$sha")（API24 合并产物）。"
+          fi
+          # GITHUB_TOKEN 推 tag 不触发 push 事件，显式 dispatch build.yaml（tag ref 使 IS_STABLE/SHOULD_RELEASE 生效）
+          gh workflow run build.yaml --repo "$GITHUB_REPOSITORY" --ref "$tag"
+          echo "已 dispatch build.yaml（tag $tag），构建完成后将自动创建 Release。"
