@@ -1,0 +1,72 @@
+name: Android 7 API 24 compatibility
+
+on:
+  push:
+    branches:
+      - feature/android-api24
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  android-api24:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      GRADLE_OPTS: -Dorg.gradle.vfs.watch=false
+      SENTRY_BACKEND: none
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: core/go.sum
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.7'
+          cache: true
+      - name: Install Android NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          NDK_VERSION=28.2.13676358
+          yes | "${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager" --install "ndk;${NDK_VERSION}" || test -d "${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}"
+          echo "ANDROID_NDK=${ANDROID_SDK_ROOT}/ndk/${NDK_VERSION}" >> "$GITHUB_ENV"
+      - name: Generate code and build native core
+        shell: bash
+        run: |
+          set -euo pipefail
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs
+          dart setup.dart android --arch arm64 --out core-only
+          dart setup.dart android --arch arm --out core-only
+      - name: Build release APKs
+        run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --dart-define=APP_ENV=pre
+      - name: Verify APK minimum SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          apks=(build/app/outputs/flutter-apk/*.apk)
+          test "${#apks[@]}" -ge 2
+          AAPT="${ANDROID_SDK_ROOT}/build-tools/36.0.0/aapt"
+          if [ ! -x "$AAPT" ]; then AAPT="$(find "${ANDROID_SDK_ROOT}/build-tools" -name aapt -type f | sort -V | tail -1)"; fi
+          for apk in "${apks[@]}"; do
+            echo "Inspecting $apk"
+            "$AAPT" dump badging "$apk" | grep -E "^(package:|sdkVersion:|native-code:)"
+            "$AAPT" dump badging "$apk" | grep -q "sdkVersion:'24'"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bettbox-android-api24-apks
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+          retention-days: 14
