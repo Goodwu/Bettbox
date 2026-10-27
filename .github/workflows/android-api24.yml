@@ -75,8 +75,9 @@ jobs:
           dart run build_runner build --delete-conflicting-outputs
           dart setup.dart android --arch arm64 --out core-only
           dart setup.dart android --arch arm --out core-only
+          dart setup.dart android --arch amd64 --out core-only
       - name: Build release APKs
-        run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64 --dart-define=APP_ENV=pre
+        run: flutter build apk --release --split-per-abi --target-platform android-arm,android-arm64,android-x64 --dart-define=APP_ENV=pre
       - name: Verify APK minimum SDK
         shell: bash
         run: |
@@ -102,6 +103,31 @@ jobs:
           for apk in build/app/outputs/flutter-apk/*.apk; do
             "$APKSIGNER" verify --verbose --print-certs --min-sdk-version 24 "$apk"
           done
+      - name: Enable KVM for Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: API 24 emulator cold-start smoke test
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 24
+          target: google_apis
+          arch: x86_64
+          profile: pixel
+          cores: 2
+          ram-size: 2048M
+          disk-size: 4096M
+          disable-animations: true
+          script: bash .github/scripts/smoke-api24.sh
+      - name: Upload API 24 emulator diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bettbox-api24-emulator-logs
+          path: api24-test-results/
+          if-no-files-found: ignore
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: bettbox-android-api24-apks
