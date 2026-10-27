@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+  # fork 补充：GITHUB_TOKEN 推 tag 不会触发 push 事件，由 sync-upstream 显式 dispatch
+  workflow_dispatch:
 
 env:
   IS_STABLE: ${{ !contains(github.ref, '-') }}
